@@ -51,6 +51,7 @@ class ChatServer {
         Thread t = new Thread(new ConnectionHandler(client)); // create a thread for the new client and pass in the socket
         Thread t2 = new Thread(new UpdateHandler(clientUpdate));
         t.start(); // start the new thread
+        t2.start();
       }
     } catch (Exception e) {
       System.out.println("Error accepting connection");
@@ -162,10 +163,6 @@ class ChatServer {
         }
       }
 
-      // Send a message to the client
-      //output.println("We got your message! Goodbye.");
-      //output.flush();
-
       // close the socket
       try {
         input.close();
@@ -209,7 +206,7 @@ class ChatServer {
           e.printStackTrace();
         }
 
-        output.writeObject(users);
+        //output.writeObject(users);
 
         for(User key : userSet) {
           if(userMap.get(key) != this.updateSocket) {
@@ -224,7 +221,7 @@ class ChatServer {
       try {
         input.close();
         output.close();
-        updateSocket.close();
+        //updateSocket.close();
       } catch (Exception e) {
         System.out.println("Failed to close socket2");
       }

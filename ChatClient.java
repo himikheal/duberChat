@@ -22,10 +22,10 @@ class ChatClient {
   //private JLabel errorLabel = new JLabel("");
   private Socket mySocket; // socket for connection
   private Socket updateSocket;
-  private ObjectInputStream input;
-  private ObjectOutputStream output;
-  private ObjectInputStream updateInput;
-  private ObjectOutputStream updateOutput;
+  //private ObjectInputStream input;
+  //private ObjectOutputStream output;
+  //private ObjectInputStream updateInput;
+  //private ObjectOutputStream updateOutput;
   private boolean running = true; // thread status via boolean
   private User user = new User(null); //
   private User targetUser;
@@ -87,7 +87,7 @@ class ChatClient {
     // call a method that connects to the server
     connect("127.0.0.1", 5000);
     // after connecting loop and keep appending[.append()] to the JTextArea
-    readMessagesFromServer();
+    //readMessagesFromServer();
           
     
   }
@@ -99,29 +99,18 @@ class ChatClient {
     try {
       mySocket = new Socket("127.0.0.1", 5000); // attempt socket connection (local address). This will wait until a connection is made
       updateSocket = new Socket("127.0.0.1", 5001);
-      InputStream inputStream = mySocket.getInputStream();
-      input = new ObjectInputStream(inputStream);
-      OutputStream outputStream = mySocket.getOutputStream();
-      output = new ObjectOutputStream(outputStream);
-      InputStream updateInputStream = updateSocket.getInputStream();
-      updateInput = new ObjectInputStream(updateInputStream);
-      OutputStream updateOutputStream = updateSocket.getOutputStream();
-      updateOutput = new ObjectOutputStream(updateOutputStream);
+      //InputStream inputStream = mySocket.getInputStream();
+      //input = new ObjectInputStream(inputStream);
+      //OutputStream outputStream = mySocket.getOutputStream();
+      //output = new ObjectOutputStream(outputStream);
+      //InputStream updateInputStream = updateSocket.getInputStream();
+      //updateInput = new ObjectInputStream(updateInputStream);
+      //OutputStream updateOutputStream = updateSocket.getOutputStream();
+      //updateOutput = new ObjectOutputStream(updateOutputStream);
+      Thread t = new Thread(new messageReader(mySocket));
       
-//      if(logged){
-//        try {
-//          users = ((ArrayList<User>) input.readObject());
-//          
-//          System.out.println(size = users.size());
-//                    
-//          System.out.println(users);
-//        } catch (ClassNotFoundException e) {
-//          System.out.println("Class not found");
-//          e.printStackTrace();
-//        }
-//      }
+      t.start(); // start the new thread
       
-//      output.writeObject(user);
       
     } catch (IOException e) { // connection error occured
       System.out.println("Connection to Server Failed");
@@ -133,52 +122,53 @@ class ChatClient {
   }
   
   // Starts a loop waiting for server input and then displays it on the textArea
-  public void readMessagesFromServer() {
-    
-    while (running) { // loop unit a message is received
-      try {
-        //Object o = input.readObject();
-        //if(o instanceof String) {
-        System.out.println("RESCHED");
-        String msg = "";
-        //try {
-        msg = (String) input.readObject(); // read the message
-        //} catch (ClassNotFoundException e) {
-        //  System.out.println("Class not found");
-        // e.printStackTrace();
-        //}
-        System.out.println("received: " + msg);
-        msgArea.append(msg + "\n");
-        //}
-        //else if(o instanceof ArrayList) {
-          //users = ((ArrayList<User>) o);
-        //if(updateInput.available() != 0) {
-          users = ((ArrayList<User>) updateInput.readObject());
-          System.out.println(users);
-          updateFriends();
-        //}
-        //}
-      } catch (IOException e) {
-        System.out.println("Failed to receive msg from the server");
-        e.printStackTrace();
-      } catch (ClassNotFoundException e) {
-        System.out.println("Class not found");
-        e.printStackTrace();
-      }
-    }
-    try { // after leaving the main loop we need to close all the sockets
-      input.close();
-      output.close();
-      updateInput.close();
-      updateOutput.close();
-      mySocket.close();
-    } catch (Exception e) {
-      System.out.println("Failed to close socket");
-    }
-    
-  }
+  //public void readMessagesFromServer() {
+  //  
+  //  while (running) { // loop unit a message is received
+  //    try {
+  //      //Object o = input.readObject();
+  //      //if(o instanceof String) {
+  //      System.out.println("RESCHED");
+  //      String msg = "";
+  //      //try {
+  //      msg = (String) input.readObject(); // read the message
+  //      //} catch (ClassNotFoundException e) {
+  //      //  System.out.println("Class not found");
+  //      // e.printStackTrace();
+  //      //}
+  //      System.out.println("received: " + msg);
+  //      msgArea.append(msg + "\n");
+  //      //}
+  //      //else if(o instanceof ArrayList) {
+  //        //users = ((ArrayList<User>) o);
+  //      //if(updateInput.available() != 0) {
+  //        users = ((ArrayList<User>) updateInput.readObject());
+  //        System.out.println(users);
+  //        updateFriends();
+  //      //}
+  //      //}
+  //    } catch (IOException e) {
+  //      System.out.println("Failed to receive msg from the server");
+  //      e.printStackTrace();
+  //    } catch (ClassNotFoundException e) {
+  //      System.out.println("Class not found");
+  //      e.printStackTrace();
+  //    }
+  //  }
+  //  try { // after leaving the main loop we need to close all the sockets
+  //    input.close();
+  //    output.close();
+  //    updateInput.close();
+  //    updateOutput.close();
+  //    mySocket.close();
+  //  } catch (Exception e) {
+  //    System.out.println("Failed to close socket");
+  //  }
+  //  
+  //}
 
   public void updateFriends(){
+    System.out.println("USERSIZE " + users.size());
     for(int i = 0; i < users.size(); i++){
       friendButton = new JButton(users.get(i).getUsername());
       friendButton.addActionListener(new FriendButtonListener());
@@ -189,24 +179,112 @@ class ChatClient {
       if(users.size() > 8){
         int diff = (users.size()*50)-400;
         friendPanel.setPreferredSize(new Dimension(250, 400+diff));
-        friendPanel.revalidate();
       }
     }
+    friendPanel.revalidate();
   }
   // ****** Inner Classes for Action Listeners ****
   
   // send - send msg to server (also flush), then clear the JTextField
+
+  class messageReader implements Runnable {
+    private Socket socket;
+    private boolean running;
+    private ObjectInputStream input;
+    private ObjectOutputStream output;
+
+    messageReader(Socket s) {
+      this.socket = s;
+      try {
+        InputStream inputStream = socket.getInputStream();
+        this.input = new ObjectInputStream(inputStream);
+        OutputStream outputStream = socket.getOutputStream();
+        this.output = new ObjectOutputStream(outputStream);
+      } catch(IOException e) {
+        e.printStackTrace();
+      }
+      this.running = true;
+    }
+
+    public void run() {
+      while(running) {
+        try {
+          System.out.println("AHAHTEST");
+          String msg = "";
+          msg = (String) this.input.readObject(); // read the message
+          System.out.println("received: " + msg);
+          msgArea.append(msg + "\n");
+        } catch (IOException e) {
+          System.out.println("Failed to receive msg from the server");
+          e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+          System.out.println("Class not found");
+          e.printStackTrace();
+        }
+      }
+    }
+  }
+
+  class clientUpdater implements Runnable {
+    private Socket socket;
+    private boolean running;
+    private User user;
+    private ObjectInputStream input;
+    private ObjectOutputStream output;
+
+    clientUpdater(Socket s, User user) {
+      this.socket = s;
+      this.user = user;
+      try {
+        InputStream inputStream = socket.getInputStream();
+        this.input = new ObjectInputStream(inputStream);
+        OutputStream outputStream = socket.getOutputStream();
+        this.output = new ObjectOutputStream(outputStream);
+      } catch(IOException e) {
+        System.out.println("TESTING3");
+        e.printStackTrace();
+      }
+      this.running = true;
+    }
+
+    public void run() {
+      try {
+        this.output.writeObject(user);
+      }catch(IOException e) {
+        System.out.println("NO SEND USER");
+        e.printStackTrace();
+      }
+
+      //while(running) {
+        try {
+          System.out.println("HI1");
+          users = ((ArrayList<User>) this.input.readObject());
+          users.add(new User("bob"));
+          System.out.println(users);
+          System.out.println("HI2");
+          updateFriends();
+          System.out.println("HI3");
+        }catch(IOException e) {
+          System.out.println("TESTING1");
+          e.printStackTrace();
+        }catch(ClassNotFoundException e2) {
+          System.out.println("TESTING2");
+          e2.printStackTrace();
+        }
+      //}
+    }
+  }
   
   class SendButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       
-      try {
+      //try {
         message = new Message(targetUser, typeField.getText());
-        output.writeObject(message);
-        output.flush();
-      } catch(IOException e) { // Catches IO error
-        e.printStackTrace();
-      }
+        //output.writeObject(message);
+        //output.flush();
+      //} catch(IOException e) { // Catches IO error
+      //  e.printStackTrace();
+      //}
       typeField.setText("");
       //}
     }
@@ -250,37 +328,17 @@ class ChatClient {
       user = new User(typeField.getText());
       typeField.setText("");
 
-      try{
-        updateOutput.writeObject(user);
-      }catch(IOException e){
-        System.out.println("Error sending user info");
-      }
-    //  logged = true;
-      
-      //try {
-       // users = ((ArrayList<User>) input.readObject());
-      
-      //users.add(new User("john"));
-      //users.add(new User("john2"));
-      //users.add(new User("john3"));
-      //users.add(new User("john4"));
-      //users.add(new User("john5"));
-      //users.add(new User("john6"));
-      //users.add(new User("john7"));
-      //users.add(new User("john8"));
-      //users.add(new User("john9"));
-        
+      //try{
+        System.out.println(user == null);
+        Thread t2 = new Thread(new clientUpdater(updateSocket, user));
+        t2.start();
+      //}catch(IOException e){
+      //  System.out.println("Error sending user info");
+      //}
+
         System.out.println(size = users.size());
         
         System.out.println(users);
-//      } catch (ClassNotFoundException e) {
-//        System.out.println("Class not found");
-//        e.printStackTrace();
-//      } catch (IOException e) {
-//        System.out.println("Input output exception");
-//        e.printStackTrace();
-//      }
-      
       
       loginPanel.remove(typeField);
       login.dispose();
@@ -294,19 +352,7 @@ class ChatClient {
       window.add(BorderLayout.SOUTH, southPanel);
       
       
-      updateFriends();
-//      for(int i = 0; i < users.size(); i++){
-//        friendButton = new JButton(users.get(i).getUsername());
-//        friendButton.addActionListener(new FriendButtonListener());
-//        friendButton.setPreferredSize(new Dimension(250,50));
-//        friendButton.setMaximumSize(new Dimension(250,50));
-//        friendPanel.add(friendButton);
-//        if(users.size() > 8){
-//          int diff = (users.size()*50)-400;
-//          friendPanel.setPreferredSize(new Dimension(400, 400+diff));
-//          friendPanel.revalidate();
-//        }
-//      }
+      //updateFriends();
       friends.add(scroller, BorderLayout.CENTER);
       friends.setSize(400,400);
       friends.setVisible(true);
