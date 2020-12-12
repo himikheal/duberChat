@@ -16,8 +16,10 @@ class ChatServer {
   
   static Boolean running = true; // controls if the server is accepting clients
   ArrayList<User> users = new ArrayList<User>();
-  HashMap<User, Socket> userMap = new HashMap<>();
-  Set<User> userSet = userMap.keySet();
+  HashMap<User, ObjectOutputStream[]> outputMap = new HashMap<>(); //[0] is client, [1] is update
+  Set<User> outputSet = outputMap.keySet();
+  //HashMap<User, ObjectInputStream[]> inputMap = new HashMap<>();
+  //Set<User> inputSet = inputMap.keySet();
   /**
    * Main
    * 
@@ -34,7 +36,7 @@ class ChatServer {
     System.out.println("Waiting for a client connection..");
 
     Socket client = null;// hold the client connection
-    Socket clientUpdate = null;
+    Socket clientUpdater = null;
 
     try {
       serverSock = new ServerSocket(5000); // assigns an port to the server
@@ -42,16 +44,18 @@ class ChatServer {
       // serverSock.setSoTimeout(15000); //15 second timeout
       while (running) { // this loops to accept multiple clients
         client = serverSock.accept(); // wait for connectio
-        clientUpdate = updateSocket.accept();
+        clientUpdater = updateSocket.accept();
         
         System.out.println("Client connected");
         // Note: you might want to keep references to all clients if you plan to
         // broadcast messages
         // Also: Queues are good tools to buffer incoming/outgoing messages
-        Thread t = new Thread(new ConnectionHandler(client)); // create a thread for the new client and pass in the socket
-        Thread t2 = new Thread(new UpdateHandler(clientUpdate));
+        //Thread t = new Thread(new ConnectionHandler(client)); // create a thread for the new client and pass in the socket
+        //t.start(); // start the new thread
+        Thread t = new Thread(new ConnectionHandler(client, clientUpdater)); // create a thread for the new client and pass in the socket
         t.start(); // start the new thread
-        t2.start();
+        //Thread t2 = new Thread(new UpdateHandler(clientUpdater, client));
+        //t2.start();
       }
     } catch (Exception e) {
       System.out.println("Error accepting connection");
@@ -59,7 +63,7 @@ class ChatServer {
       // close all and quit
       try {
         client.close();
-        clientUpdate.close();
+        clientUpdater.close();
       } catch (Exception e1) {
         System.out.println("Failed to close socket");
       }
@@ -69,9 +73,12 @@ class ChatServer {
 
   // ***** Inner class - thread for client connection
   class ConnectionHandler implements Runnable {
-    private ObjectOutputStream output;
+    //private ObjectOutputStream output;
     private ObjectInputStream input;
+    //private ObjectOutputStream updateOutput;
+    private ObjectInputStream updateInput;
     private Socket client; // keeps track of the client socket
+    private Socket updateSocket;
     private boolean running;
     private User user;
 
@@ -80,34 +87,18 @@ class ChatServer {
      * 
      * @param the socket belonging to this client connection
      */
-    ConnectionHandler(Socket s) {
+    ConnectionHandler(Socket s, Socket updateSocket) {
       this.client = s; // constructor assigns client to this
+      this.updateSocket = updateSocket;
       try { // assign all connections to client
         InputStream inputStream = s.getInputStream();
-        OutputStream outputStream = s.getOutputStream();
-        output = new ObjectOutputStream(outputStream);
+        //OutputStream outputStream = s.getOutputStream();
+        //output = new ObjectOutputStream(outputStream);
         input = new ObjectInputStream(inputStream);
-
-        //try {
-        //  user = (User) input.readObject();
-        //  System.out.println(user);
-        //  users.add(user);
-        //  userMap.put(user, this.client);
-        //} catch (ClassNotFoundException e) {
-        //  System.out.println("Class not found");
-        //  e.printStackTrace();
-        //}
-
-        //output.writeObject(users);
-//
-        //for(User key : userSet) {
-        //  if(userMap.get(key) != this.client) {
-        //    ObjectOutputStream tempOutput = new ObjectOutputStream(userMap.get(key).getOutputStream());
-        //    tempOutput.writeObject(users);
-        //    tempOutput.close();
-        //  }
-        //}
-
+        InputStream updateInputStream = updateSocket.getInputStream();
+        //OutputStream updateOutputStream = updateSocket.getOutputStream();
+        //updateOutput = new ObjectOutputStream(updateOutputStream);
+        updateInput = new ObjectInputStream(updateInputStream);
       } catch (IOException e) {
         e.printStackTrace();
       }
@@ -118,6 +109,35 @@ class ChatServer {
      * run executed on start of thread
      */
     public void run() {
+      try {
+        this.user = (User) input.readObject();
+        System.out.println("WTFTEST");
+        System.out.println("IS USER NULL? " + this.user == null);
+        System.out.println(this.user);
+        System.out.println(this.user.getUsername());
+        users.add(this.user);
+        outputMap.put(this.user, new ObjectOutputStream[]{
+          new ObjectOutputStream(this.client.getOutputStream()), 
+          new ObjectOutputStream(this.updateSocket.getOutputStream())});
+
+        //outputMap.get(user)[1].writeObject(users);
+        //outputMap.get(user)[1].flush();
+
+        for(User key : outputSet) {
+          //System.out.println(key != this.user);
+          //if(key != this.user) {
+          System.out.println(users.size());
+            outputMap.get(key)[1].writeObject(users);
+            outputMap.get(key)[1].reset();
+          //}
+        }
+      } catch (ClassNotFoundException e) {
+        System.out.println("Class not found");
+        e.printStackTrace();
+      } catch (IOException e2) {
+        System.out.println("IO NO GOOD");
+        e2.printStackTrace();
+      }
 
       // Get a message from the client
       Message msg = null;
@@ -127,46 +147,33 @@ class ChatServer {
       // Get a message from the client
       while (running) { // loop unit a message is received
         try {
-         //if (input.ready()) { // check for an incoming messge
-            //if(username == null) {
-            //  try {
-            //    username = (String) input.readObject();
-            //  } catch (ClassNotFoundException e) {
-            //    System.out.println("Class not found");
-            //    e.printStackTrace();
-            //  }
-            //  output.flush();
-            //}
-            //else {
-              try {
-                msg = (Message) input.readObject(); // get a message from the client
-              } catch (ClassNotFoundException e) {
-                System.out.println("Class not found");
-                e.printStackTrace();
-              }
-              System.out.println(this.user.getUsername() + ": " + msg.getText());
-              output.writeObject(msg); // echo the message back to the client ** This needs changing for multiple clients
-              output.flush();
-              for(User key : userSet) {
-                if(msg.getTargetUser().equals(key)) {
-                  ObjectOutputStream targetOutput = new ObjectOutputStream(userMap.get(key).getOutputStream());
-                  targetOutput.writeObject(this.user.getUsername() + ": " + msg.getText());
-                  targetOutput.flush();
-                  targetOutput.close();
-                }
-              }
-            //}
-          //}
+          try {
+            msg = (Message) input.readObject(); // get a message from the client
+          } catch (ClassNotFoundException e) {
+            System.out.println("Class not found");
+            e.printStackTrace();
+          }
+          System.out.println(this.user.getUsername() + ": " + msg.getText());
+          outputMap.get(user)[0].writeObject(this.user.getUsername() + ": " + msg.getText()); // echo the message back to the client ** This needs changing for multiple clients
+          outputMap.get(user)[0].flush();
+          for(User key : outputSet) {
+            if(msg.getTargetUser().getUsername().equals(key.getUsername())) {
+              outputMap.get(key)[0].writeObject(this.user.getUsername() + ": " + msg.getText());
+              outputMap.get(key)[0].flush();
+            }
+          }
         } catch (IOException e) {
           System.out.println("Failed to receive msg from the client");
           e.printStackTrace();
+          running = false;
         }
       }
 
       // close the socket
       try {
         input.close();
-        output.close();
+        outputMap.get(user)[0].close();
+        outputMap.get(user)[1].close();
         client.close();
         updateSocket.close();
       } catch (Exception e) {
@@ -175,56 +182,43 @@ class ChatServer {
     } // end of run()
   } // end of inner class
 
-  class UpdateHandler implements Runnable {
-    private ObjectOutputStream output;
-    private ObjectInputStream input;
-    private Socket updateSocket;
-    private User user;
-    
-    UpdateHandler(Socket s) {
-      updateSocket = s;
-      try { // assign all connections to client
-        InputStream inputStream = s.getInputStream();
-        OutputStream outputStream = s.getOutputStream();
-        output = new ObjectOutputStream(outputStream);
-        input = new ObjectInputStream(inputStream);
-
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-
-    public void run() {
-      try {
-        try {
-          user = (User) input.readObject();
-          System.out.println(user);
-          users.add(user);
-          userMap.put(user, this.updateSocket);
-        } catch (ClassNotFoundException e) {
-          System.out.println("Class not found");
-          e.printStackTrace();
-        }
-
-        //output.writeObject(users);
-
-        for(User key : userSet) {
-          if(userMap.get(key) != this.updateSocket) {
-            ObjectOutputStream tempOutput = new ObjectOutputStream(userMap.get(key).getOutputStream());
-            tempOutput.writeObject(users);
-            tempOutput.close();
-          }
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-      try {
-        input.close();
-        output.close();
-        //updateSocket.close();
-      } catch (Exception e) {
-        System.out.println("Failed to close socket2");
-      }
-    }
-  }
+  //class UpdateHandler implements Runnable {
+  //  private ObjectOutputStream output;
+  //  private ObjectInputStream input;
+  //  private Socket updateSocket;
+  //  private User user;
+  //  private Socket clientSocket;
+  //  
+  //  UpdateHandler(Socket s, Socket clientSocket) {
+  //    this.updateSocket = s;
+  //    this.clientSocket = clientSocket;
+  //    try { // assign all connections to client
+  //      InputStream inputStream = s.getInputStream();
+  //      OutputStream outputStream = s.getOutputStream();
+  //      output = new ObjectOutputStream(outputStream);
+  //      input = new ObjectInputStream(inputStream);
+  //
+  //    } catch (IOException e) {
+  //      e.printStackTrace();
+  //    }
+  //  }
+  //
+  //  public void run() {
+  //    try {
+  //      
+  //      
+  //
+  //      
+  //    } catch (IOException e) {
+  //      e.printStackTrace();
+  //    }
+  //    try {
+  //      //input.close();
+  //      //output.close();
+  //      //updateSocket.close();
+  //    } catch (Exception e) {
+  //      System.out.println("Failed to close socket2");
+  //    }
+  //  }
+  //}
 } // end of Class
