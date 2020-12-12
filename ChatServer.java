@@ -160,6 +160,7 @@ class ChatServer {
         } catch (IOException e) {
           System.out.println("Failed to receive msg from the client");
           e.printStackTrace();
+          running = false;
         }
       }
 
@@ -206,7 +207,7 @@ class ChatServer {
           e.printStackTrace();
         }
 
-        //output.writeObject(users);
+        output.writeObject(users);
 
         for(User key : userSet) {
           if(userMap.get(key) != this.updateSocket) {

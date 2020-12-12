@@ -10,15 +10,18 @@ import java.io.*;
 import java.net.*;
 import java.awt.event.*;
 import java.util.*;
+import static javax.swing.ScrollPaneConstants.*;
+
 
 class ChatClient {
   
   private JButton sendButton, clearButton, loginButton, friendButton, backButton;
   private JTextField typeField;
-  private JTextArea msgArea;
+  private JTextArea msgArea, globalMsgArea;
   private JPanel southPanel;
   private JPanel loginPanel;
   private JPanel friendPanel;
+  private JPanel globalPanel;
   //private JLabel errorLabel = new JLabel("");
   private Socket mySocket; // socket for connection
   private Socket updateSocket;
@@ -49,12 +52,16 @@ class ChatClient {
     southPanel = new JPanel();
     loginPanel = new JPanel();
     friendPanel = new JPanel();
+    globalPanel = new JPanel();
     southPanel.setLayout(new GridLayout(2, 0));
     loginPanel.setLayout(new GridLayout(1, 0));
     friendPanel.setLayout(new BoxLayout(friendPanel, BoxLayout.Y_AXIS));
+    globalPanel.setLayout(new BorderLayout());
+    friends.getContentPane().setLayout(new BoxLayout(friends.getContentPane(), BoxLayout.X_AXIS));
                           
     scroller = new JScrollPane(friendPanel);
-    scroller.setPreferredSize(new Dimension(400,400));
+    scroller.setPreferredSize(new Dimension(250,400));
+    scroller.setHorizontalScrollBarPolicy(HORIZONTAL_SCROLLBAR_NEVER);
     
     sendButton = new JButton("SEND");
     sendButton.addActionListener(new SendButtonListener());
@@ -68,6 +75,7 @@ class ChatClient {
     typeField = new JTextField(10);
     
     msgArea = new JTextArea();
+    globalMsgArea = new JTextArea();
     
     loginPanel.add(typeField);
     loginPanel.add(loginButton);
@@ -351,10 +359,25 @@ class ChatClient {
       window.add(BorderLayout.CENTER, msgArea);
       window.add(BorderLayout.SOUTH, southPanel);
       
+      southPanel = new JPanel();
+      typeField = new JTextField(10);
+      sendButton = new JButton("SEND");
+      sendButton.addActionListener(new SendButtonListener());
+      clearButton = new JButton("QUIT");
+      clearButton.addActionListener(new QuitButtonListener());
+      
+      southPanel.add(typeField);
+      southPanel.add(sendButton);
+      southPanel.add(clearButton);
+      
+      globalPanel.add(globalMsgArea, BorderLayout.CENTER);
+      globalPanel.add(southPanel, BorderLayout.SOUTH);
+      
       
       //updateFriends();
-      friends.add(scroller, BorderLayout.CENTER);
-      friends.setSize(400,400);
+      friends.add(scroller);
+      friends.add(globalPanel);
+      friends.pack();
       friends.setVisible(true);
       friendPanel.revalidate();
       friendPanel.repaint();
