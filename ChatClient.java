@@ -16,19 +16,21 @@ import static javax.swing.ScrollPaneConstants.*;
 class ChatClient {
   
   private JButton sendButton, clearButton, loginButton, friendButton, backButton;
-  private JTextField typeField;
+  private JTextField typeField, globalTypeField, loginField, signUpField, portField;
   private JTextArea msgArea, globalMsgArea;
+  private JPasswordField loginPassword, signUpPassword;
   private JPanel southPanel;
   private JPanel loginPanel;
+  private JPanel signUpPanel;
   private JPanel friendPanel;
   private JPanel globalPanel;
-  //private JLabel errorLabel = new JLabel("");
+  private JPanel portPanel;
+  private JPanel startingPanelContainer;
+  private JPanel loginPanelHelper;
+  private JTabbedPane startingPanel = new JTabbedPane();
+  private JLabel label;
   private Socket mySocket; // socket for connection
   private Socket updateSocket;
-  //private ObjectInputStream input;
-  //private ObjectOutputStream output;
-  //private ObjectInputStream updateInput;
-  //private ObjectOutputStream updateOutput;
   private boolean running = true; // thread status via boolean
   private User user = new User(null); //
   private User targetUser;
@@ -36,7 +38,7 @@ class ChatClient {
   private JFrame login;
   private JFrame friends;
   private Message message;
-  private boolean logged = false;
+  private boolean global = true;
   private JScrollPane scroller;
   private int size;
   ArrayList<User> users = new ArrayList<User>();
@@ -51,10 +53,14 @@ class ChatClient {
     friends = new JFrame("Friends");
     southPanel = new JPanel();
     loginPanel = new JPanel();
+    loginPanelHelper = new JPanel();
+    signUpPanel = new JPanel();
     friendPanel = new JPanel();
     globalPanel = new JPanel();
+    portPanel = new JPanel();
+    startingPanelContainer = new JPanel();
     southPanel.setLayout(new GridLayout(2, 0));
-    loginPanel.setLayout(new GridLayout(1, 0));
+    loginPanelHelper.setLayout(new GridLayout(2, 0));
     friendPanel.setLayout(new BoxLayout(friendPanel, BoxLayout.Y_AXIS));
     globalPanel.setLayout(new BorderLayout());
     friends.getContentPane().setLayout(new BoxLayout(friends.getContentPane(), BoxLayout.X_AXIS));
@@ -72,25 +78,77 @@ class ChatClient {
     backButton = new JButton("BACK");
     backButton.addActionListener(new BackButtonListener());
     
-    typeField = new JTextField(10);
-    
     msgArea = new JTextArea();
     globalMsgArea = new JTextArea();
     
-    loginPanel.add(typeField);
-    loginPanel.add(loginButton);
-//    southPanel.add(typeField);
-//    southPanel.add(sendButton);
-//    southPanel.add(errorLabel);
-//    southPanel.add(clearButton);
+    typeField = new JTextField(10);
+    globalTypeField = new JTextField(10);
+    loginField = new JTextField(10);
+    signUpField = new JTextField(10);
+    portField = new JTextField(20);
+    loginPassword = new JPasswordField(10);
+    signUpPassword = new JPasswordField(10);
+   
     
-    login.add(BorderLayout.CENTER, loginPanel);
+    label = new JLabel("Username", SwingConstants.CENTER);
+    loginPanelHelper.add(label);
+    loginPanelHelper.add(loginField);
+    label = new JLabel("Password", SwingConstants.CENTER);
+    loginPanelHelper.add(label);
+    loginPanelHelper.add(loginPassword);
+    
+    loginPanel.add(loginPanelHelper);
+    loginButton.setPreferredSize(new Dimension(150,30));
+    loginPanel.add(loginButton);
+    
+    loginPanelHelper = new JPanel();
+    loginPanelHelper.setLayout(new GridLayout(2, 0));
+    loginButton = new JButton("SIGN UP");
+    loginButton.addActionListener(new SignUpButtonListener());
+    
+    label = new JLabel("Username", SwingConstants.CENTER);
+    loginPanelHelper.add(label);
+    loginPanelHelper.add(signUpField);
+    label = new JLabel("Password", SwingConstants.CENTER);
+    loginPanelHelper.add(label);
+    loginPanelHelper.add(signUpPassword);
+    
+    signUpPanel.add(loginPanelHelper);
+    loginButton.setPreferredSize(new Dimension(150,30));
+    signUpPanel.add(loginButton);
+    
+    loginPanelHelper = new JPanel();
+    loginPanelHelper.setPreferredSize(new Dimension(400,400));
+    loginButton = new JButton("CHOOSE SERVER");
+    loginButton.addActionListener(new ServerButtonListener());
+    
+    label = new JLabel("Enter server address and port appended with a colon");
+    loginPanelHelper.add(label);
+    loginPanelHelper.add(portField);
+    loginPanelHelper.add(loginButton);
+    
+    portPanel.add(loginPanelHelper);
+    
+    
+    
+    startingPanel.addTab("Log in", null, loginPanel, "Use this if you made an account already");
+    startingPanel.addTab("Sign up", null, signUpPanel, "Create an account here");
+    startingPanel.addTab("Server Info", null, portPanel, "Enter an ip address and port of the server you wish to connect to");
+    
+    
+    //login.add(BorderLayout.CENTER, loginPanel);
     
 //    window.add(BorderLayout.CENTER, msgArea);
 //    window.add(BorderLayout.SOUTH, southPanel);
+    startingPanel.setPreferredSize(new Dimension(400,400));
     
-    login.setSize(400, 400);
+    startingPanelContainer.add(startingPanel);
+    login.add(startingPanelContainer);
+    
+    login.pack();
     login.setVisible(true);
+    
+    
     
     // call a method that connects to the server
     connect("127.0.0.1", 5000);
@@ -176,6 +234,7 @@ class ChatClient {
   //}
 
   public void updateFriends(){
+    friendPanel.removeAll();
     System.out.println("USERSIZE " + users.size());
     for(int i = 0; i < users.size(); i++){
       friendButton = new JButton(users.get(i).getUsername());
@@ -183,6 +242,7 @@ class ChatClient {
       friendButton.setPreferredSize(new Dimension(250,50));
       friendButton.setMaximumSize(new Dimension(250,50));
       friendButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+      
       friendPanel.add(friendButton);
       if(users.size() > 8){
         int diff = (users.size()*50)-400;
@@ -285,16 +345,27 @@ class ChatClient {
   
   class SendButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      
-      //try {
+      if(global){
+        //try {
+        message = new Message(targetUser, globalTypeField.getText());
+        //output.writeObject(message);
+        //output.flush();
+        //} catch(IOException e) { // Catches IO error
+        //  e.printStackTrace();
+        //}
+        globalTypeField.setText("");
+        //}
+      }else{
+        //try {
         message = new Message(targetUser, typeField.getText());
         //output.writeObject(message);
         //output.flush();
-      //} catch(IOException e) { // Catches IO error
-      //  e.printStackTrace();
-      //}
-      typeField.setText("");
-      //}
+        //} catch(IOException e) { // Catches IO error
+        //  e.printStackTrace();
+        //}
+        typeField.setText("");
+        //}
+      }
     }
   }
   
@@ -310,14 +381,34 @@ class ChatClient {
   
   class BackButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
+      global = true;
       window.setVisible(false);
       friends.setVisible(true);
     }
   }
   
+  class SignUpButtonListener implements ActionListener {
+    public void actionPerformed(ActionEvent event) {
+      user = new User(signUpField.getText());
+      String password = "";
+      for(int i = 0; i < signUpPassword.getPassword().length; i++){
+        password += signUpPassword.getPassword()[i];
+      }
+      user.setPassword(password);
+      signUpField.setText("");
+      signUpPassword.setText("");
+    }
+  }
+  
+  class ServerButtonListener implements ActionListener {
+    public void actionPerformed(ActionEvent event) {
+      portField.setText("");
+    }
+  }
+  
   class FriendButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      
+      global = false;
       Object source = event.getSource();
       JButton btn = (JButton)source;
       String friendName = btn.getText();
@@ -333,8 +424,14 @@ class ChatClient {
   
   class LoginButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      user = new User(typeField.getText());
-      typeField.setText("");
+      user = new User(loginField.getText());
+      String password = "";
+      for(int i = 0; i < loginPassword.getPassword().length; i++){
+        password += loginPassword.getPassword()[i];
+      }
+      user.setPassword(password);
+      loginField.setText("");
+      loginPassword.setText("");
 
       //try{
         System.out.println(user == null);
@@ -348,7 +445,6 @@ class ChatClient {
         
         System.out.println(users);
       
-      loginPanel.remove(typeField);
       login.dispose();
       
       southPanel.add(typeField);
@@ -360,13 +456,12 @@ class ChatClient {
       window.add(BorderLayout.SOUTH, southPanel);
       
       southPanel = new JPanel();
-      typeField = new JTextField(10);
       sendButton = new JButton("SEND");
       sendButton.addActionListener(new SendButtonListener());
       clearButton = new JButton("QUIT");
       clearButton.addActionListener(new QuitButtonListener());
       
-      southPanel.add(typeField);
+      southPanel.add(globalTypeField);
       southPanel.add(sendButton);
       southPanel.add(clearButton);
       
