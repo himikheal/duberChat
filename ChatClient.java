@@ -16,7 +16,7 @@ class ChatClient {
   
   private JButton sendButton, clearButton, loginButton, friendButton, backButton, groupButton, groupToggle, nameButton;
   private JTextField typeField, globalTypeField, loginField, signUpField, portField, nameField;
-  private JTextArea msgArea, globalMsgArea;
+  private JTextArea msgArea, globalMsgArea, groupMsgArea;
   private JPasswordField loginPassword, signUpPassword;
   private JPanel southPanel;
   private JPanel loginPanel;
@@ -91,6 +91,7 @@ class ChatClient {
     
     msgArea = new JTextArea();
     globalMsgArea = new JTextArea();
+    groupMsgArea = new JTextArea();
     
     typeField = new JTextField(10);
     globalTypeField = new JTextField(10);
@@ -176,7 +177,7 @@ class ChatClient {
     
     try {
       this.mySocket = new Socket("127.0.0.1", 5000); // attempt socket connection (local address). This will wait until a connection is made
-      this.updateSocket = new Socket("127.0.0.1", 5001);
+      this.updateSocket = new Socket("127.0.0.1", 5000);
       //InputStream inputStream = mySocket.getInputStream();
       //input = new ObjectInputStream(inputStream);
       //OutputStream outputStream = mySocket.getOutputStream();
@@ -320,14 +321,21 @@ class ChatClient {
       while(running) {
         try {
           System.out.println("AHAHTEST");
-          Message msg = null;
-          msg = (Message) input.readObject(); // read the message
-          if(msg.isGlobal()){
-            System.out.println("received: " + msg.getText());
-            globalMsgArea.append(msg.getText() + "\n");
-          }else{
-            System.out.println("received: " + msg.getText());
-            msgArea.append(msg.getText() + "\n");
+          Object o = input.readObject();
+          System.out.println("asdasdasdasasdasd" + o == null);
+          if(o instanceof Message){
+            Message msg = (Message) o; // read the message
+            if(msg.isGlobal()){
+              System.out.println("GlReceived: " + msg.getText());
+              globalMsgArea.append(msg.getText() + "\n");
+            }else{
+              System.out.println("DmReceived: " + msg.getText());
+              msgArea.append(msg.getText() + "\n");
+            }
+          }else if(o instanceof GroupMessage){
+            GroupMessage gMsg = (GroupMessage) o;
+            System.out.println("GrReceived: " + gMsg.getText());
+            groupMsgArea.append(gMsg.getText() + "\n"); 
           }
         } catch (IOException e) {
           System.out.println("Failed to receive msg from the server");
@@ -367,11 +375,17 @@ class ChatClient {
       while(running) {
         try {
           System.out.println("HI1");
-          users = ((ArrayList<User>) this.updateInput.readObject());
-          for(int i = 0; i < users.size(); i++) {
-            if(users.get(i).getUsername().equals(user.getUsername())) {
-              users.remove(i);
+          Object o = this.updateInput.readObject();
+          if(o instanceof ArrayList){
+            
+            users = ((ArrayList<User>)o);
+            for(int i = 0; i < users.size(); i++) {
+              if(users.get(i).getUsername().equals(user.getUsername())) {
+                users.remove(i);
+              }
             }
+          }else if(o instanceof GroupChat){
+            menu.add((GroupChat)o);
           }
           System.out.println(users);
           System.out.println("HI2");
@@ -414,13 +428,13 @@ class ChatClient {
         }
         globalTypeField.setText("");
       }else if(group){
-        //try {
-        groupMessage = new GroupMessage(targetGroup, typeField.getText());
-        //output.writeObject(message);
-        //output.flush();
-        //} catch(IOException e) { // Catches IO error
-        //  e.printStackTrace();
-        //}
+        try {
+          groupMessage = new GroupMessage(targetGroup, typeField.getText());
+          output.writeObject(groupMessage);
+          output.flush();
+        } catch(IOException e) { // Catches IO error
+          e.printStackTrace();
+        }
         typeField.setText("");
       }else{
         try {
@@ -447,8 +461,20 @@ class ChatClient {
   
   class BackButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      global = true;
+      //global = true;
+      //group = false;
       window.setVisible(false);
+      BorderLayout b = (BorderLayout)window.getLayout();
+      if(!group){
+        window.remove(msgArea);
+        msgArea = new JTextArea();
+      }else{
+        window.remove(groupMsgArea);
+        groupMsgArea = new JTextArea();
+      }
+      global = true;
+      group = false;
+      window.add(BorderLayout.CENTER, msgArea);
       friends.setVisible(true);
     }
   }
@@ -491,12 +517,25 @@ class ChatClient {
   
    class NameButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      menu.add(new GroupChat(targetGroup, nameField.getText()));
+      //menu.add(new GroupChat(targetGroup, nameField.getText()));
+      try{
+        targetGroup.add(user);
+        GroupChat g = new GroupChat(targetGroup, nameField.getText());
+        System.out.println(g.getGroup() == null);
+        System.out.println(g.getGroup().size());
+        for(int i = 0; i < g.getGroup().size(); i++){
+          System.out.println("text" + g.getGroup().get(i));
+        }
+        output.writeObject(g);
+      }catch(IOException e){
+        System.out.println("Failed to send groupchat");
+        e.printStackTrace();
+      }
       targetGroup.clear();
       nameField.setText("");
       groupName.removeAll();
       groupName.dispose();
-      updateFriends();
+      //updateFriends();
     }
   }
   
@@ -506,7 +545,17 @@ class ChatClient {
       Object source = event.getSource();
       JButton btn = (JButton)source;
       String friendName = btn.getText();
-      targetUser = new User(friendName); // WIP passwords wont match with identical username
+      System.out.println(friendName);
+      
+      //targetUser = new User(friendName); // WIP passwords wont match with identical username
+      for(int i = 0; i < menu.size(); i++){
+        if(menu.get(i) instanceof User){
+          System.out.println(((User)menu.get(i)).getUsername());
+          if(((User)menu.get(i)).getUsername().equals(friendName)){
+            targetUser = (User)menu.get(i);
+          }
+        }
+      }
       System.out.println(friendName);
       
       if(toggled){
@@ -521,6 +570,7 @@ class ChatClient {
   class GroupButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       global = false;
+      group = true;
       Object source = event.getSource();
       JButton btn = (JButton)source;
       String gName = btn.getText();
@@ -532,6 +582,8 @@ class ChatClient {
         }
       }
       friends.setVisible(false);
+      window.remove(msgArea);
+      window.add(BorderLayout.CENTER, groupMsgArea);
       window.setVisible(true);
     }
   }
@@ -539,6 +591,7 @@ class ChatClient {
   class LoginButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       user = new User(loginField.getText());
+      System.out.println(user);
       String password = "";
       for(int i = 0; i < loginPassword.getPassword().length; i++){
         password += loginPassword.getPassword()[i];

@@ -1,6 +1,6 @@
 import java.util.ArrayList;
 
-class GroupChat extends SuperChat{
+class GroupChat extends SuperChat implements java.io.Serializable{
   ArrayList<User> group = new ArrayList<User>();
   String name;
   
@@ -24,4 +24,5 @@ class GroupChat extends SuperChat{
   public String getName(){
     return this.name;
   }
+  
 }
