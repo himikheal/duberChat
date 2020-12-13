@@ -154,11 +154,20 @@ class ChatServer {
             e.printStackTrace();
           }
           System.out.println(this.user.getUsername() + ": " + msg.getText());
-          outputMap.get(user)[0].writeObject(this.user.getUsername() + ": " + msg.getText()); // echo the message back to the client ** This needs changing for multiple clients
-          outputMap.get(user)[0].flush();
-          for(User key : outputSet) {
-            if(msg.getTargetUser().getUsername().equals(key.getUsername())) {
-              outputMap.get(key)[0].writeObject(this.user.getUsername() + ": " + msg.getText());
+          msg.setText(this.user.getUsername() + ": " + msg.getText());
+          if(!msg.isGlobal()) {
+            outputMap.get(user)[0].writeObject(msg); // echo the message back to the client ** This needs changing for multiple clients
+            outputMap.get(user)[0].flush();
+            for(User key : outputSet) {
+              if(msg.getTargetUser().getUsername().equals(key.getUsername())) {
+                outputMap.get(key)[0].writeObject(msg);
+                outputMap.get(key)[0].flush();
+              }
+            }
+          }
+          else if(msg.isGlobal()) {
+            for(User key : outputSet) {
+              outputMap.get(key)[0].writeObject(msg);
               outputMap.get(key)[0].flush();
             }
           }

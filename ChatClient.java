@@ -57,7 +57,7 @@ class ChatClient {
   public void go() {
     window = new JFrame("Chat Client");
     login = new JFrame("Login Window");
-    friends = new JFrame("Friends");
+    friends = new JFrame("Global Room / Online Users");
    // groupName = new JFrame("Name your Group");
     southPanel = new JPanel();
     loginPanel = new JPanel();
@@ -244,7 +244,7 @@ class ChatClient {
   public void updateFriends(){
     friendPanel.removeAll();
     
-    for(int i = menu.size()-1; i > 0; i--){
+    for(int i = menu.size()-1; i >= 0; i--){
       if(menu.get(i) instanceof User){
         menu.remove(i);
       }
@@ -320,10 +320,15 @@ class ChatClient {
       while(running) {
         try {
           System.out.println("AHAHTEST");
-          String msg = "";
-          msg = (String) input.readObject(); // read the message
-          System.out.println("received: " + msg);
-          msgArea.append(msg + "\n");
+          Message msg = null;
+          msg = (Message) input.readObject(); // read the message
+          if(msg.isGlobal()){
+            System.out.println("received: " + msg.getText());
+            globalMsgArea.append(msg.getText() + "\n");
+          }else{
+            System.out.println("received: " + msg.getText());
+            msgArea.append(msg.getText() + "\n");
+          }
         } catch (IOException e) {
           System.out.println("Failed to receive msg from the server");
           e.printStackTrace();
@@ -400,13 +405,13 @@ class ChatClient {
   class SendButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       if(global){
-        //try {
-        message = new Message(targetUser, globalTypeField.getText(), global);
-        //output.writeObject(message);
-        //output.flush();
-        //} catch(IOException e) { // Catches IO error
-        //  e.printStackTrace();
-        //}
+        try {
+          message = new Message(targetUser, globalTypeField.getText(), global);
+          output.writeObject(message);
+          output.flush();
+        } catch(IOException e) { // Catches IO error
+          e.printStackTrace();
+        }
         globalTypeField.setText("");
       }else if(group){
         //try {
