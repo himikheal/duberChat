@@ -15,8 +15,8 @@ import static javax.swing.ScrollPaneConstants.*;
 
 class ChatClient {
   
-  private JButton sendButton, clearButton, loginButton, friendButton, backButton;
-  private JTextField typeField, globalTypeField, loginField, signUpField, portField;
+  private JButton sendButton, clearButton, loginButton, friendButton, backButton, groupButton, groupToggle, nameButton;
+  private JTextField typeField, globalTypeField, loginField, signUpField, portField, nameField;
   private JTextArea msgArea, globalMsgArea;
   private JPasswordField loginPassword, signUpPassword;
   private JPanel southPanel;
@@ -27,6 +27,7 @@ class ChatClient {
   private JPanel portPanel;
   private JPanel startingPanelContainer;
   private JPanel loginPanelHelper;
+  private JPanel groupNameHelper;
   private JTabbedPane startingPanel = new JTabbedPane();
   private JLabel label;
   private Socket mySocket; // socket for connection
@@ -34,14 +35,17 @@ class ChatClient {
   private boolean running = true; // thread status via boolean
   private User user = new User(null); //
   private User targetUser;
-  private JFrame window;
-  private JFrame login;
-  private JFrame friends;
+  private JFrame window, login, friends, groupName;
   private Message message;
+  private GroupMessage groupMessage;
   private boolean global = true;
+  private boolean toggled = false;
+  private boolean group = false;
   private JScrollPane scroller;
   private int size;
   ArrayList<User> users = new ArrayList<User>();
+  ArrayList<User> targetGroup = new ArrayList<User>();
+  ArrayList<SuperChat> menu = new ArrayList<SuperChat>();
   
   public static void main(String[] args) {
     new ChatClient().go();
@@ -51,6 +55,7 @@ class ChatClient {
     window = new JFrame("Chat Client");
     login = new JFrame("Login Window");
     friends = new JFrame("Friends");
+   // groupName = new JFrame("Name your Group");
     southPanel = new JPanel();
     loginPanel = new JPanel();
     loginPanelHelper = new JPanel();
@@ -58,12 +63,15 @@ class ChatClient {
     friendPanel = new JPanel();
     globalPanel = new JPanel();
     portPanel = new JPanel();
+    groupNameHelper = new JPanel();
     startingPanelContainer = new JPanel();
     southPanel.setLayout(new GridLayout(2, 0));
     loginPanelHelper.setLayout(new GridLayout(2, 0));
     friendPanel.setLayout(new BoxLayout(friendPanel, BoxLayout.Y_AXIS));
     globalPanel.setLayout(new BorderLayout());
     friends.getContentPane().setLayout(new BoxLayout(friends.getContentPane(), BoxLayout.X_AXIS));
+    
+    window.setSize(400,400);
                           
     scroller = new JScrollPane(friendPanel);
     scroller.setPreferredSize(new Dimension(250,400));
@@ -86,6 +94,7 @@ class ChatClient {
     loginField = new JTextField(10);
     signUpField = new JTextField(10);
     portField = new JTextField(20);
+    nameField = new JTextField(10);
     loginPassword = new JPasswordField(10);
     signUpPassword = new JPasswordField(10);
    
@@ -235,21 +244,46 @@ class ChatClient {
 
   public void updateFriends(){
     friendPanel.removeAll();
-    System.out.println("USERSIZE " + users.size());
-    for(int i = 0; i < users.size(); i++){
-      friendButton = new JButton(users.get(i).getUsername());
-      friendButton.addActionListener(new FriendButtonListener());
-      friendButton.setPreferredSize(new Dimension(250,50));
-      friendButton.setMaximumSize(new Dimension(250,50));
-      friendButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-      
-      friendPanel.add(friendButton);
-      if(users.size() > 8){
-        int diff = (users.size()*50)-400;
-        friendPanel.setPreferredSize(new Dimension(250, 400+diff));
+    
+    for(int i = menu.size()-1; i > 0; i--){
+      if(menu.get(i) instanceof User){
+        menu.remove(i);
       }
     }
-    friendPanel.revalidate();
+    
+    for(int i = 0; i < users.size(); i++){
+      menu.add(users.get(i));
+    }
+    
+    for(int i = 0; i < menu.size(); i++){
+      if(menu.get(i) instanceof GroupChat){
+        groupButton = new JButton(((GroupChat)menu.get(i)).getName());
+        groupButton.addActionListener(new GroupButtonListener());
+        groupButton.setPreferredSize(new Dimension(250,50));
+        groupButton.setMaximumSize(new Dimension(250,50));
+        groupButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        friendPanel.add(groupButton);
+      }else if(menu.get(i) instanceof User){
+        
+        System.out.println("MENUSIZE " + menu.size());
+        //  for(int i = 0; i < users.size(); i++){
+        users.remove(user);
+        friendButton = new JButton(((User)menu.get(i)).getUsername());
+        friendButton.addActionListener(new FriendButtonListener());
+        friendButton.setPreferredSize(new Dimension(250,50));
+        friendButton.setMaximumSize(new Dimension(250,50));
+        friendButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        friendPanel.add(friendButton);
+      }
+      if(menu.size() > 8){
+        int diff = (menu.size()*50)-400;
+        friendPanel.setPreferredSize(new Dimension(250, 400+diff));
+      }
+        // }
+      friendPanel.revalidate();
+    }
   }
   // ****** Inner Classes for Action Listeners ****
   
@@ -354,7 +388,15 @@ class ChatClient {
         //  e.printStackTrace();
         //}
         globalTypeField.setText("");
+      }else if(group){
+        //try {
+        groupMessage = new GroupMessage(targetGroup, typeField.getText());
+        //output.writeObject(message);
+        //output.flush();
+        //} catch(IOException e) { // Catches IO error
+        //  e.printStackTrace();
         //}
+        typeField.setText("");
       }else{
         //try {
         message = new Message(targetUser, typeField.getText());
@@ -364,7 +406,6 @@ class ChatClient {
         //  e.printStackTrace();
         //}
         typeField.setText("");
-        //}
       }
     }
   }
@@ -379,11 +420,30 @@ class ChatClient {
     }
   }
   
+ 
+  
   class BackButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       global = true;
       window.setVisible(false);
       friends.setVisible(true);
+    }
+  }
+  
+  class ToggleButtonListener implements ActionListener {
+    public void actionPerformed(ActionEvent event) {
+      toggled = !toggled;
+      if(!toggled){
+        groupName = new JFrame("Name your Group");
+        nameButton = new JButton("SUBMIT NAME");
+        nameButton.addActionListener(new NameButtonListener());
+        nameButton.setPreferredSize(new Dimension(150, 30));
+        groupNameHelper.add(nameField);
+        groupNameHelper.add(nameButton);
+        groupName.add(groupNameHelper);
+        groupName.pack();
+        groupName.setVisible(true);
+      }
     }
   }
   
@@ -406,19 +466,50 @@ class ChatClient {
     }
   }
   
+   class NameButtonListener implements ActionListener {
+    public void actionPerformed(ActionEvent event) {
+      menu.add(new GroupChat(targetGroup, nameField.getText()));
+      targetGroup.clear();
+      nameField.setText("");
+      groupName.removeAll();
+      groupName.dispose();
+      updateFriends();
+    }
+  }
+  
   class FriendButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       global = false;
       Object source = event.getSource();
       JButton btn = (JButton)source;
       String friendName = btn.getText();
-      targetUser = new User(friendName);
+      targetUser = new User(friendName); // WIP passwords wont match with identical username
       System.out.println(friendName);
       
+      if(toggled){
+        targetGroup.add(targetUser);
+      }else{
+        friends.setVisible(false);
+        window.setVisible(true);
+      }
+    }
+  }
+  
+  class GroupButtonListener implements ActionListener {
+    public void actionPerformed(ActionEvent event) {
+      global = false;
+      Object source = event.getSource();
+      JButton btn = (JButton)source;
+      String gName = btn.getText();
+      for(int i = 0; i < menu.size(); i++){
+        if(menu.get(i) instanceof GroupChat){
+          if(((GroupChat)menu.get(i)).getName().equals(gName)){
+            targetGroup = ((GroupChat)menu.get(i)).getGroup();
+          }
+        }
+      }
       friends.setVisible(false);
-      window.setSize(400,400);
       window.setVisible(true);
-      
     }
   }
   
@@ -432,7 +523,8 @@ class ChatClient {
       user.setPassword(password);
       loginField.setText("");
       loginPassword.setText("");
-
+      users.remove(user);
+      
       //try{
         System.out.println(user == null);
         Thread t2 = new Thread(new clientUpdater(updateSocket, user));
@@ -468,6 +560,10 @@ class ChatClient {
       globalPanel.add(globalMsgArea, BorderLayout.CENTER);
       globalPanel.add(southPanel, BorderLayout.SOUTH);
       
+      groupToggle = new JButton("<HTML>TOGGLE GROUP<P>CHAT CREATION");
+      groupToggle.addActionListener(new ToggleButtonListener());
+      groupToggle.setMaximumSize(new Dimension(150,60));
+      friends.add(groupToggle);
       
       //updateFriends();
       friends.add(scroller);

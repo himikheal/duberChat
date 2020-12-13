@@ -1,7 +1,7 @@
 import java.io.Serializable;
 
 
-class User implements Serializable {
+class User extends SuperChat implements Serializable {
   private String username;
   private String password;
 
@@ -24,5 +24,17 @@ class User implements Serializable {
 
   public void setPassword(String password) {
     this.password = password;
+  }
+  
+  @Override
+  public boolean equals(Object obj){
+    if(obj == null){
+      return false;
+    }
+    if(!(obj instanceof User)){
+      return false;
+    }
+    User other = (User)obj;
+    return this.username == other.getUsername() && this.password == other.getPassword();
   }
 }
