@@ -41,7 +41,7 @@ class ChatServer {
     try {
       serverSock = new ServerSocket(5000); // assigns an port to the server
       //updateSocket = new ServerSocket(5001);
-      // serverSock.setSoTimeout(15000); //15 second timeout
+      //serverSock.setSoTimeout(15000); //15 second timeout
       while (running) { // this loops to accept multiple clients
         client = serverSock.accept(); // wait for connectio
         clientUpdater = serverSock.accept();

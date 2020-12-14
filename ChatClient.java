@@ -44,6 +44,7 @@ class ChatClient {
   private boolean global = true;
   private boolean toggled = false;
   private boolean group = false;
+  private boolean connected = false;
   private JScrollPane scroller;
   private int size;
   ArrayList<User> users = new ArrayList<User>();
@@ -97,7 +98,7 @@ class ChatClient {
     globalTypeField = new JTextField(10);
     loginField = new JTextField(10);
     signUpField = new JTextField(10);
-    portField = new JTextField(20);
+    portField = new JTextField("127.0.0.1:5000",20);
     nameField = new JTextField(10);
     loginPassword = new JPasswordField(10);
     signUpPassword = new JPasswordField(10);
@@ -135,7 +136,8 @@ class ChatClient {
     loginButton = new JButton("CHOOSE SERVER");
     loginButton.addActionListener(new ServerButtonListener());
     
-    label = new JLabel("Enter server address and port appended with a colon");
+    label = new JLabel("<HTML>Enter server address and port appended with a colon<P>Will time out after ~20 seconds", SwingConstants.CENTER);
+    label.setPreferredSize(new Dimension(300,30));
     loginPanelHelper.add(label);
     loginPanelHelper.add(portField);
     loginPanelHelper.add(loginButton);
@@ -143,10 +145,9 @@ class ChatClient {
     portPanel.add(loginPanelHelper);
     
     
-    
+    startingPanel.addTab("Server Info", null, portPanel, "Enter an ip address and port of the server you wish to connect to");
     startingPanel.addTab("Log in", null, loginPanel, "Use this if you made an account already");
     startingPanel.addTab("Sign up", null, signUpPanel, "Create an account here");
-    startingPanel.addTab("Server Info", null, portPanel, "Enter an ip address and port of the server you wish to connect to");
     
     
     //login.add(BorderLayout.CENTER, loginPanel);
@@ -164,7 +165,7 @@ class ChatClient {
     
     
     // call a method that connects to the server
-    connect("127.0.0.1", 5000);
+    //connect("127.0.0.1", 5000);
     // after connecting loop and keep appending[.append()] to the JTextArea
     //readMessagesFromServer();
           
@@ -176,8 +177,13 @@ class ChatClient {
     System.out.println("Attempting to make a connection..");
     
     try {
-      this.mySocket = new Socket("127.0.0.1", 5000); // attempt socket connection (local address). This will wait until a connection is made
-      this.updateSocket = new Socket("127.0.0.1", 5000);
+      this.mySocket = new Socket(ip, port); // attempt socket connection (local address). This will wait until a connection is made
+      this.updateSocket = new Socket(ip, port);
+      //this.mySocket.setSoTimeout(5000);
+      //this.updateSocket.setSoTimeout(5000);
+      //this.mySocket.setSoTimeout(0);
+      //this.updateSocket.setSoTimeout(0);
+      connected = true;
       //InputStream inputStream = mySocket.getInputStream();
       //input = new ObjectInputStream(inputStream);
       //OutputStream outputStream = mySocket.getOutputStream();
@@ -186,13 +192,17 @@ class ChatClient {
       //updateInput = new ObjectInputStream(updateInputStream);
       //OutputStream updateOutputStream = updateSocket.getOutputStream();
       //updateOutput = new ObjectOutputStream(updateOutputStream);
+      label.setText("Connection Made");
+      System.out.println("Connection Made");
       
     } catch (IOException e) { // connection error occured
+      connected = false;
+      label.setText("Server not Found, Check Address");
       System.out.println("Connection to Server Failed");
       e.printStackTrace();
     }
     
-    System.out.println("Connection made.");
+    //System.out.println("Connection made.");
     return mySocket;
   }
   
@@ -511,7 +521,11 @@ class ChatClient {
   
   class ServerButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      portField.setText("");
+      String server = portField.getText();
+      String address = server.substring(0, server.indexOf(":"));
+      String portString = server.substring(server.indexOf(":")+1, server.length());
+      int port = Integer.parseInt(portString);
+      connect(address,port);
     }
   }
   
