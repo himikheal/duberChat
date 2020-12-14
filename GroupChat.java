@@ -24,4 +24,5 @@ class GroupChat extends SuperChat implements java.io.Serializable{
   public String getName(){
     return this.name;
   }
+  
 }

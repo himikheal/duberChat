@@ -41,7 +41,7 @@ class ChatServer {
     try {
       serverSock = new ServerSocket(5000); // assigns an port to the server
       //updateSocket = new ServerSocket(5001);
-      // serverSock.setSoTimeout(15000); //15 second timeout
+      //serverSock.setSoTimeout(15000); //15 second timeout
       while (running) { // this loops to accept multiple clients
         client = serverSock.accept(); // wait for connectio
         clientUpdater = serverSock.accept();
@@ -127,8 +127,8 @@ class ChatServer {
           //System.out.println(key != this.user);
           //if(key != this.user) {
           System.out.println(users.size());
-            outputMap.get(key)[1].writeObject(users);
-            outputMap.get(key)[1].reset();
+          outputMap.get(key)[1].writeObject(users);
+          outputMap.get(key)[1].reset();
           //}
         }
       } catch (ClassNotFoundException e) {
@@ -147,21 +147,6 @@ class ChatServer {
       // Get a message from the client
       while (running) { // loop unit a message is received
         try {
-<<<<<<< Updated upstream
-          try {
-            msg = (Message) input.readObject(); // get a message from the client
-          } catch (ClassNotFoundException e) {
-            System.out.println("Class not found");
-            e.printStackTrace();
-          }
-          System.out.println(this.user.getUsername() + ": " + msg.getText());
-          outputMap.get(user)[0].writeObject(this.user.getUsername() + ": " + msg.getText()); // echo the message back to the client ** This needs changing for multiple clients
-          outputMap.get(user)[0].flush();
-          for(User key : outputSet) {
-            if(msg.getTargetUser().getUsername().equals(key.getUsername())) {
-              outputMap.get(key)[0].writeObject(this.user.getUsername() + ": " + msg.getText());
-              outputMap.get(key)[0].flush();
-=======
           Object o = input.readObject();
           //msg = (Message) input.readObject(); // get a message from the client
           
@@ -191,7 +176,7 @@ class ChatServer {
             msg.setText(this.user.getUsername() + ": " + msg.getText());
             for(User key : outputSet) {
               for(int i = 0; i < msg.getTargetUsers().size(); i++) {
-                if(msg.getTargetUsers().get(i).equals(key)) {
+                if(msg.getTargetUsers().get(i).getUsername().equals(key.getUsername())) {
                   outputMap.get(key)[0].writeObject(msg);
                   outputMap.get(key)[0].flush();
                 }
@@ -199,14 +184,33 @@ class ChatServer {
             }
           }
           else if(o instanceof GroupChat) {
+            System.out.println("asdfMOVIE");
             for(User key : outputSet) {
               for(int i = 0; i < ((GroupChat)o).getGroup().size(); i++) {
-                if(((GroupChat)o).getGroup().get(i).equals(key)) {
+                System.out.println("asdfMOVIE2");
+                System.out.println(key);
+                System.out.println(((GroupChat)o).getGroup().get(i));
+                
+                if(((GroupChat)o).getGroup().get(i).getUsername().equals(key.getUsername())) {
+                  System.out.println("asdfMOVIE3");
                   outputMap.get(key)[1].writeObject(o);
                   outputMap.get(key)[1].flush();
                 }
               }
->>>>>>> Stashed changes
+            }
+          }
+          else if(o instanceof String) {
+            if(o.equals("/DISCONNECT!")) {
+              for(User key : outputSet) {
+                if(key.getUsername().equals(this.user.getUsername())) {
+                  outputMap.get(key)[1].writeObject("/DISCONNECT!");
+                  outputMap.get(key)[1].flush();
+                  //outputMap.remove(key);
+                  //outputSet.remove(key);
+                  //users.remove(key);
+                }
+              }
+              running = false;
             }
           }
         } catch (IOException e) {
@@ -226,7 +230,15 @@ class ChatServer {
         outputMap.get(user)[1].close();
         client.close();
         updateSocket.close();
-      } catch (Exception e) {
+        for(User key : outputSet) {
+          if(key.getUsername().equals(this.user.getUsername())) {
+            outputMap.remove(key);
+            outputSet.remove(key);
+            users.remove(key);
+          }
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
         System.out.println("Failed to close socket1");
       }
     } // end of run()
