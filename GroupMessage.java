@@ -12,6 +12,10 @@ class GroupMessage implements java.io.Serializable{
     return this.text;
   }
   
+  public void setText(String text){
+    this.text = text;
+  }
+  
   public ArrayList<User> getTargetUsers(){
     return this.targetUsers;
   }

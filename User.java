@@ -4,14 +4,14 @@ import java.io.Serializable;
 class User extends SuperChat implements Serializable {
   private String username;
   private String password;
+  private boolean signIn;
 
   User(String username) {
     this.username = username;
-    this.password = password;
   }
 
   public String getUsername() {
-    return username;
+    return this.username;
   }
 
   public void setUsername(String username) {
@@ -19,22 +19,18 @@ class User extends SuperChat implements Serializable {
   }
   
   public String getPassword() {
-    return password;
+    return this.password;
   }
 
   public void setPassword(String password) {
     this.password = password;
   }
   
-  @Override
-  public boolean equals(Object obj){
-    if(obj == null){
-      return false;
-    }
-    if(!(obj instanceof User)){
-      return false;
-    }
-    User other = (User)obj;
-    return this.username == other.getUsername() && this.password == other.getPassword();
+  public boolean getSignIn(){
+    return this.signIn;
+  }
+  
+  public void setSignIn(boolean signIn){
+    this.signIn = signIn;
   }
 }
