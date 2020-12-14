@@ -48,6 +48,8 @@ class ChatClient {
   ArrayList<User> users = new ArrayList<User>();
   ArrayList<User> targetGroup = new ArrayList<User>();
   ArrayList<SuperChat> menu = new ArrayList<SuperChat>();
+  private Thread t;
+  private Thread t2;
   
   public static void main(String[] args) {
     new ChatClient().go();
@@ -188,6 +190,7 @@ class ChatClient {
   
   public void updateFriends(){
     friendPanel.removeAll();
+    friends.validate();
     
     for(int i = menu.size()-1; i >= 0; i--){
       if(menu.get(i) instanceof User){
@@ -200,7 +203,9 @@ class ChatClient {
     }
     
     for(int i = 0; i < menu.size(); i++){
+      
       if(menu.get(i) instanceof GroupChat){
+        System.out.println("!!!!!");
         groupButton = new JButton(((GroupChat)menu.get(i)).getName());
         groupButton.addActionListener(new GroupButtonListener());
         groupButton.setPreferredSize(new Dimension(250,50));
@@ -209,7 +214,7 @@ class ChatClient {
         
         friendPanel.add(groupButton);
       }else if(menu.get(i) instanceof User){
-        
+        System.out.println("@@@@@@");
         System.out.println("MENUSIZE " + menu.size());
         users.remove(user);
         friendButton = new JButton(((User)menu.get(i)).getUsername());
@@ -225,6 +230,7 @@ class ChatClient {
         friendPanel.setPreferredSize(new Dimension(250, 400+diff));
       }
       friendPanel.revalidate();
+      friendPanel.repaint();
     }
   }
   // ****** Inner Classes for Action Listeners ****
@@ -281,6 +287,13 @@ class ChatClient {
             System.out.println("GrReceived: " + gMsg.getText());
             groupMsgArea.append(gMsg.getText() + "\n"); 
           }
+          else if(o instanceof String){
+            System.out.println("TESTSTSTSTST");
+            if(((String)o).equals("/DISCONNECT!")){
+              System.out.println("TESTteedd");
+              this.running = false;
+            }
+          }
         } catch (IOException e) {
           System.out.println("Failed to receive msg from the server");
           e.printStackTrace();
@@ -290,6 +303,14 @@ class ChatClient {
           e.printStackTrace();
           running = false;
         }
+      }
+      try {
+        output.close();
+        input.close();
+        mySocket.close();
+      } catch(IOException e) {
+        System.out.println("Error closing stuff");
+        e.printStackTrace();
       }
     }
   }
@@ -316,11 +337,13 @@ class ChatClient {
     }
 
     public void run() {
-      while(running) {
+      while(this.running) {
         try {
           System.out.println("HI1");
           Object o = this.updateInput.readObject();
+          System.out.println("TYPEEEEE " + o.getClass());
           if(o instanceof ArrayList){
+            System.out.println("SFSDFSDFSDF");
             users = ((ArrayList<User>)o);
             for(int i = 0; i < users.size(); i++) {
               if(users.get(i).getUsername().equals(user.getUsername())) {
@@ -330,8 +353,10 @@ class ChatClient {
           }else if(o instanceof GroupChat){
             menu.add((GroupChat)o);
           }else if(o instanceof String){
+            System.out.println("TESTSTSTSTST22");
             if(((String)o).equals("/DISCONNECT!")){
-              running = false;
+              System.out.println("TESTteedd22");
+              this.running = false;
             }
           }
           System.out.println(users);
@@ -347,8 +372,10 @@ class ChatClient {
         }
       }
       try{
+        //output.writeObject("/DISCONNECTED!");
         updateInput.close();
         updateOutput.close();
+        updateSocket.close();
       }catch(IOException e){
         System.out.println("Error closing stuff");
         e.printStackTrace();
@@ -394,10 +421,10 @@ class ChatClient {
     public void actionPerformed(ActionEvent event) {
       try{
         output.writeObject("/DISCONNECT!");
-        output.close();
-        input.close();
-        mySocket.close();
-        updateSocket.close();
+        //output.close();
+        //input.close();
+        //mySocket.close();
+        //updateSocket.close();
       }catch(IOException e){
         System.out.println("Error closing stuff");
         e.printStackTrace();
@@ -550,11 +577,11 @@ class ChatClient {
       loginPassword.setText("");
 
         System.out.println("??? "+user.getUsername());
-        Thread t = new Thread(new messageReader(mySocket, user));
+        t = new Thread(new messageReader(mySocket, user));
         System.out.println("WHY1");
         t.start(); // start the new thread
         System.out.println("WHY2");
-        Thread t2 = new Thread(new clientUpdater(updateSocket));
+        t2 = new Thread(new clientUpdater(updateSocket));
         System.out.println("WHY3");
         t2.start();
         System.out.println("WHY4");
