@@ -98,7 +98,7 @@ class ChatClient {
     
     try {
       this.mySocket = new Socket("127.0.0.1", 5000); // attempt socket connection (local address). This will wait until a connection is made
-      this.updateSocket = new Socket("127.0.0.1", 5001);
+      this.updateSocket = new Socket("127.0.0.1", 5000);
       //InputStream inputStream = mySocket.getInputStream();
       //input = new ObjectInputStream(inputStream);
       //OutputStream outputStream = mySocket.getOutputStream();

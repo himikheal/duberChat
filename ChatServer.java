@@ -12,10 +12,10 @@ import java.util.*;
 class ChatServer {
 
   ServerSocket serverSock;// server socket for connection
-  ServerSocket updateSocket;
+  //ServerSocket updateSocket;
   
   static Boolean running = true; // controls if the server is accepting clients
-  ArrayList<User> users = new ArrayList<User>();
+  ArrayList<SuperChat> users = new ArrayList<SuperChat>();
   HashMap<User, ObjectOutputStream[]> outputMap = new HashMap<>(); //[0] is client, [1] is update
   Set<User> outputSet = outputMap.keySet();
   //HashMap<User, ObjectInputStream[]> inputMap = new HashMap<>();
@@ -40,11 +40,11 @@ class ChatServer {
 
     try {
       serverSock = new ServerSocket(5000); // assigns an port to the server
-      updateSocket = new ServerSocket(5001);
+      //updateSocket = new ServerSocket(5001);
       // serverSock.setSoTimeout(15000); //15 second timeout
       while (running) { // this loops to accept multiple clients
         client = serverSock.accept(); // wait for connectio
-        clientUpdater = updateSocket.accept();
+        clientUpdater = serverSock.accept();
         
         System.out.println("Client connected");
         // Note: you might want to keep references to all clients if you plan to
@@ -140,13 +140,14 @@ class ChatServer {
       }
 
       // Get a message from the client
-      Message msg = null;
+      //Message msg = null;
 
       // Send a message to the client
 
       // Get a message from the client
       while (running) { // loop unit a message is received
         try {
+<<<<<<< Updated upstream
           try {
             msg = (Message) input.readObject(); // get a message from the client
           } catch (ClassNotFoundException e) {
@@ -160,12 +161,61 @@ class ChatServer {
             if(msg.getTargetUser().getUsername().equals(key.getUsername())) {
               outputMap.get(key)[0].writeObject(this.user.getUsername() + ": " + msg.getText());
               outputMap.get(key)[0].flush();
+=======
+          Object o = input.readObject();
+          //msg = (Message) input.readObject(); // get a message from the client
+          
+          if(o instanceof Message) {
+            Message msg = (Message) o;
+            System.out.println(this.user.getUsername() + ": " + msg.getText());
+            msg.setText(this.user.getUsername() + ": " + msg.getText());
+            if(!msg.isGlobal()) {
+              outputMap.get(user)[0].writeObject(msg); // echo the message back to the client ** This needs changing for multiple clients
+              outputMap.get(user)[0].flush();
+              for(User key : outputSet) {
+                if(msg.getTargetUser().getUsername().equals(key.getUsername())) {
+                  outputMap.get(key)[0].writeObject(msg);
+                  outputMap.get(key)[0].flush();
+                }
+              }
+            }
+            else if(msg.isGlobal()) {
+              for(User key : outputSet) {
+                outputMap.get(key)[0].writeObject(msg);
+                outputMap.get(key)[0].flush();
+              }
+            }
+          }
+          else if(o instanceof GroupMessage) {
+            GroupMessage msg = (GroupMessage) o;
+            msg.setText(this.user.getUsername() + ": " + msg.getText());
+            for(User key : outputSet) {
+              for(int i = 0; i < msg.getTargetUsers().size(); i++) {
+                if(msg.getTargetUsers().get(i).equals(key)) {
+                  outputMap.get(key)[0].writeObject(msg);
+                  outputMap.get(key)[0].flush();
+                }
+              }
+            }
+          }
+          else if(o instanceof GroupChat) {
+            for(User key : outputSet) {
+              for(int i = 0; i < ((GroupChat)o).getGroup().size(); i++) {
+                if(((GroupChat)o).getGroup().get(i).equals(key)) {
+                  outputMap.get(key)[1].writeObject(o);
+                  outputMap.get(key)[1].flush();
+                }
+              }
+>>>>>>> Stashed changes
             }
           }
         } catch (IOException e) {
           System.out.println("Failed to receive msg from the client");
           e.printStackTrace();
           running = false;
+        } catch (ClassNotFoundException e2) {
+          System.out.println("Class not found");
+          e2.printStackTrace();
         }
       }
 
