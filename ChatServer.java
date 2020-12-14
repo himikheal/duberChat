@@ -81,6 +81,8 @@ class ChatServer {
     private Socket updateSocket;
     private boolean running;
     private User user;
+    private PrintWriter fileOut;
+    private BufferedReader fileIn;
 
     /*
      * ConnectionHandler Constructor
@@ -88,6 +90,12 @@ class ChatServer {
      * @param the socket belonging to this client connection
      */
     ConnectionHandler(Socket s, Socket updateSocket) {
+      try{
+        fileOut = new PrintWriter(new FileWriter("UserInfo.txt", true));
+        fileIn = new BufferedReader(new FileReader("UserInfo.txt"));
+      }catch(IOException e){
+        System.out.println("UserInfo.txt not found");
+      }
       this.client = s; // constructor assigns client to this
       this.updateSocket = updateSocket;
       try { // assign all connections to client
@@ -118,11 +126,18 @@ class ChatServer {
         users.add(this.user);
         outputMap.put(this.user, new ObjectOutputStream[]{
           new ObjectOutputStream(this.client.getOutputStream()), 
-          new ObjectOutputStream(this.updateSocket.getOutputStream())});
-
+            new ObjectOutputStream(this.updateSocket.getOutputStream())});
+        if(this.user.getSignIn()){
+          //String st;
+          //while((st = fileIn.readLine()) != null){
+          //  if(this.user.getUsername().equals(st)){
+          fileOut.println(user.getUsername() + ":" + user.getPassword());
+          fileOut.close();
+        }
+        
         //outputMap.get(user)[1].writeObject(users);
         //outputMap.get(user)[1].flush();
-
+        
         for(User key : outputSet) {
           //System.out.println(key != this.user);
           //if(key != this.user) {
@@ -205,9 +220,8 @@ class ChatServer {
                 if(key.getUsername().equals(this.user.getUsername())) {
                   outputMap.get(key)[1].writeObject("/DISCONNECT!");
                   outputMap.get(key)[1].flush();
-//                  outputMap.remove(key);
-//                  outputSet.remove(key);
-//                  users.remove(key);
+                  outputMap.get(key)[0].writeObject("/DISCONNECT!");
+                  outputMap.get(key)[0].flush();
                 }
               }
               running = false;

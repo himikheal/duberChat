@@ -43,6 +43,7 @@ class ChatClient {
   private boolean toggled = false;
   private boolean group = false;
   private boolean connected = false;
+  private boolean threadCall = true;
   private JScrollPane scroller;
   private int size;
   ArrayList<User> users = new ArrayList<User>();
@@ -155,11 +156,7 @@ class ChatClient {
     
     login.pack();
     login.setVisible(true);
-    
-    
-    
- 
-          
+         
     
   }
   
@@ -182,6 +179,7 @@ class ChatClient {
       System.out.println("Connection to Server Failed");
       e.printStackTrace();
     }
+
 
     return mySocket;
   }
@@ -244,7 +242,7 @@ class ChatClient {
         output = new ObjectOutputStream(outputStream);
         
       } catch(IOException e) {
-        e.printStackTrace();
+       e.printStackTrace();
       }
       this.running = true;
     }
@@ -447,6 +445,7 @@ class ChatClient {
   class SignUpButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       user = new User(signUpField.getText());
+      user.setSignIn(true);
       String password = "";
       for(int i = 0; i < signUpPassword.getPassword().length; i++){
         password += signUpPassword.getPassword()[i];
@@ -454,6 +453,54 @@ class ChatClient {
       user.setPassword(password);
       signUpField.setText("");
       signUpPassword.setText("");
+      
+      if(threadCall){
+        threadCall = !threadCall;
+        System.out.println("??? "+user.getUsername());
+        Thread t = new Thread(new messageReader(mySocket, user));
+        System.out.println("WHY1");
+        t.start(); // start the new thread
+        System.out.println("WHY2");
+        Thread t2 = new Thread(new clientUpdater(updateSocket));
+        System.out.println("WHY3");
+        t2.start();
+        System.out.println("WHY4");
+      }
+      
+//      login.dispose();
+//      
+//      southPanel.add(typeField);
+//      southPanel.add(sendButton);
+//      southPanel.add(backButton);
+//      southPanel.add(clearButton);
+//      
+//      window.add(BorderLayout.CENTER, msgArea);
+//      window.add(BorderLayout.SOUTH, southPanel);
+//      
+//      southPanel = new JPanel();
+//      sendButton = new JButton("SEND");
+//      sendButton.addActionListener(new SendButtonListener());
+//      clearButton = new JButton("QUIT");
+//      clearButton.addActionListener(new QuitButtonListener());
+//      
+//      southPanel.add(globalTypeField);
+//      southPanel.add(sendButton);
+//      southPanel.add(clearButton);
+//      
+//      globalPanel.add(globalMsgArea, BorderLayout.CENTER);
+//      globalPanel.add(southPanel, BorderLayout.SOUTH);
+//      
+//      groupToggle = new JButton("<HTML>TOGGLE GROUP<P>CHAT CREATION");
+//      groupToggle.addActionListener(new ToggleButtonListener());
+//      groupToggle.setMaximumSize(new Dimension(150,60));
+//      friends.add(groupToggle);
+//      
+//      friends.add(scroller);
+//      friends.add(globalPanel);
+//      friends.pack();
+//      friends.setVisible(true);
+//      friendPanel.revalidate();
+//      friendPanel.repaint();
     }
   }
   
@@ -549,6 +596,8 @@ class ChatClient {
       loginField.setText("");
       loginPassword.setText("");
 
+      if(threadCall){
+        threadCall = !threadCall;
         System.out.println("??? "+user.getUsername());
         Thread t = new Thread(new messageReader(mySocket, user));
         System.out.println("WHY1");
@@ -558,6 +607,7 @@ class ChatClient {
         System.out.println("WHY3");
         t2.start();
         System.out.println("WHY4");
+      }
       
       login.dispose();
       
