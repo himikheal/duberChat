@@ -199,6 +199,20 @@ class ChatServer {
               }
             }
           }
+          else if(o instanceof String) {
+            if(o.equals("/DISCONNECT!")) {
+              for(User key : outputSet) {
+                if(key.getUsername().equals(this.user.getUsername())) {
+                  outputMap.get(key)[1].writeObject("/DISCONNECT!");
+                  outputMap.get(key)[1].flush();
+//                  outputMap.remove(key);
+//                  outputSet.remove(key);
+//                  users.remove(key);
+                }
+              }
+              running = false;
+            }
+          }
         } catch (IOException e) {
           System.out.println("Failed to receive msg from the client");
           e.printStackTrace();
@@ -216,49 +230,18 @@ class ChatServer {
         outputMap.get(user)[1].close();
         client.close();
         updateSocket.close();
-      } catch (Exception e) {
+        for(User key : outputSet) {
+          if(key.getUsername().equals(this.user.getUsername())) {
+            outputMap.remove(key);
+            outputSet.remove(key);
+            users.remove(key);
+          }
+        }
+      } catch (IOException e) {
         System.out.println("Failed to close socket1");
+        e.printStackTrace();
       }
     } // end of run()
   } // end of inner class
 
-  //class UpdateHandler implements Runnable {
-  //  private ObjectOutputStream output;
-  //  private ObjectInputStream input;
-  //  private Socket updateSocket;
-  //  private User user;
-  //  private Socket clientSocket;
-  //  
-  //  UpdateHandler(Socket s, Socket clientSocket) {
-  //    this.updateSocket = s;
-  //    this.clientSocket = clientSocket;
-  //    try { // assign all connections to client
-  //      InputStream inputStream = s.getInputStream();
-  //      OutputStream outputStream = s.getOutputStream();
-  //      output = new ObjectOutputStream(outputStream);
-  //      input = new ObjectInputStream(inputStream);
-  //
-  //    } catch (IOException e) {
-  //      e.printStackTrace();
-  //    }
-  //  }
-  //
-  //  public void run() {
-  //    try {
-  //      
-  //      
-  //
-  //      
-  //    } catch (IOException e) {
-  //      e.printStackTrace();
-  //    }
-  //    try {
-  //      //input.close();
-  //      //output.close();
-  //      //updateSocket.close();
-  //    } catch (Exception e) {
-  //      System.out.println("Failed to close socket2");
-  //    }
-  //  }
-  //}
 } // end of Class

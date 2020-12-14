@@ -7,11 +7,10 @@ class User extends SuperChat implements Serializable {
 
   User(String username) {
     this.username = username;
-    this.password = password;
   }
 
   public String getUsername() {
-    return username;
+    return this.username;
   }
 
   public void setUsername(String username) {
@@ -19,7 +18,7 @@ class User extends SuperChat implements Serializable {
   }
   
   public String getPassword() {
-    return password;
+    return this.password;
   }
 
   public void setPassword(String password) {

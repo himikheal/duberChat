@@ -33,8 +33,6 @@ class ChatClient {
   private Socket updateSocket;
   private ObjectInputStream input;
   private ObjectOutputStream output;
-  //private ObjectInputStream updateInput;
-  //private ObjectOutputStream updateOutput;
   private boolean running = true; // thread status via boolean
   private User user = new User(null); //
   private User targetUser;
@@ -149,11 +147,7 @@ class ChatClient {
     startingPanel.addTab("Log in", null, loginPanel, "Use this if you made an account already");
     startingPanel.addTab("Sign up", null, signUpPanel, "Create an account here");
     
-    
-    //login.add(BorderLayout.CENTER, loginPanel);
-    
-//    window.add(BorderLayout.CENTER, msgArea);
-//    window.add(BorderLayout.SOUTH, southPanel);
+
     startingPanel.setPreferredSize(new Dimension(400,400));
     
     startingPanelContainer.add(startingPanel);
@@ -164,10 +158,7 @@ class ChatClient {
     
     
     
-    // call a method that connects to the server
-    //connect("127.0.0.1", 5000);
-    // after connecting loop and keep appending[.append()] to the JTextArea
-    //readMessagesFromServer();
+ 
           
     
   }
@@ -179,19 +170,9 @@ class ChatClient {
     try {
       this.mySocket = new Socket(ip, port); // attempt socket connection (local address). This will wait until a connection is made
       this.updateSocket = new Socket(ip, port);
-      //this.mySocket.setSoTimeout(5000);
-      //this.updateSocket.setSoTimeout(5000);
-      //this.mySocket.setSoTimeout(0);
-      //this.updateSocket.setSoTimeout(0);
+
       connected = true;
-      //InputStream inputStream = mySocket.getInputStream();
-      //input = new ObjectInputStream(inputStream);
-      //OutputStream outputStream = mySocket.getOutputStream();
-      //output = new ObjectOutputStream(outputStream);
-      //InputStream updateInputStream = updateSocket.getInputStream();
-      //updateInput = new ObjectInputStream(updateInputStream);
-      //OutputStream updateOutputStream = updateSocket.getOutputStream();
-      //updateOutput = new ObjectOutputStream(updateOutputStream);
+ 
       label.setText("Connection Made");
       System.out.println("Connection Made");
       
@@ -201,57 +182,10 @@ class ChatClient {
       System.out.println("Connection to Server Failed");
       e.printStackTrace();
     }
-    
-    //System.out.println("Connection made.");
+
     return mySocket;
   }
   
-  // Starts a loop waiting for server input and then displays it on the textArea
-  //public void readMessagesFromServer() {
-  //  
-  //  while (running) { // loop unit a message is received
-  //    try {
-  //      //Object o = input.readObject();
-  //      //if(o instanceof String) {
-  //      System.out.println("RESCHED");
-  //      String msg = "";
-  //      //try {
-  //      msg = (String) input.readObject(); // read the message
-  //      //} catch (ClassNotFoundException e) {
-  //      //  System.out.println("Class not found");
-  //      // e.printStackTrace();
-  //      //}
-  //      System.out.println("received: " + msg);
-  //      msgArea.append(msg + "\n");
-  //      //}
-  //      //else if(o instanceof ArrayList) {
-  //        //users = ((ArrayList<User>) o);
-  //      //if(updateInput.available() != 0) {
-  //        users = ((ArrayList<User>) updateInput.readObject());
-  //        System.out.println(users);
-  //        updateFriends();
-  //      //}
-  //      //}
-  //    } catch (IOException e) {
-  //      System.out.println("Failed to receive msg from the server");
-  //      e.printStackTrace();
-  //    } catch (ClassNotFoundException e) {
-  //      System.out.println("Class not found");
-  //      e.printStackTrace();
-  //    }
-  //  }
-  //  try { // after leaving the main loop we need to close all the sockets
-  //    input.close();
-  //    output.close();
-  //    updateInput.close();
-  //    updateOutput.close();
-  //    mySocket.close();
-  //  } catch (Exception e) {
-  //    System.out.println("Failed to close socket");
-  //  }
-  //  
-  //}
-
   public void updateFriends(){
     friendPanel.removeAll();
     
@@ -387,7 +321,6 @@ class ChatClient {
           System.out.println("HI1");
           Object o = this.updateInput.readObject();
           if(o instanceof ArrayList){
-            
             users = ((ArrayList<User>)o);
             for(int i = 0; i < users.size(); i++) {
               if(users.get(i).getUsername().equals(user.getUsername())) {
@@ -396,6 +329,10 @@ class ChatClient {
             }
           }else if(o instanceof GroupChat){
             menu.add((GroupChat)o);
+          }else if(o instanceof String){
+            if(((String)o).equals("/DISCONNECT!")){
+              running = false;
+            }
           }
           System.out.println(users);
           System.out.println("HI2");
@@ -409,22 +346,15 @@ class ChatClient {
           e2.printStackTrace();
         }
       }
+      try{
+        updateInput.close();
+        updateOutput.close();
+      }catch(IOException e){
+        System.out.println("Error closing stuff");
+        e.printStackTrace();
+      }
     }
   }
-  
-//  class SendButtonListener implements ActionListener {
-//    public void actionPerformed(ActionEvent event) {
-//      
-//      try {
-//        message = new Message(targetUser, typeField.getText());
-//        output.writeObject(message);
-//        output.flush();
-//      } catch(IOException e) { // Catches IO error
-//        e.printStackTrace();
-//      }
-//      typeField.setText("");
-//    }
-//  }
   
   class SendButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
@@ -462,6 +392,16 @@ class ChatClient {
   // QuitButtonListener - Quit the program
   class QuitButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
+      try{
+        output.writeObject("/DISCONNECT!");
+        output.close();
+        input.close();
+        mySocket.close();
+        updateSocket.close();
+      }catch(IOException e){
+        System.out.println("Error closing stuff");
+        e.printStackTrace();
+      }
       running = false;
       window.dispose();
       friends.dispose();
@@ -471,8 +411,6 @@ class ChatClient {
   
   class BackButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      //global = true;
-      //group = false;
       window.setVisible(false);
       BorderLayout b = (BorderLayout)window.getLayout();
       if(!group){
@@ -531,7 +469,6 @@ class ChatClient {
   
    class NameButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      //menu.add(new GroupChat(targetGroup, nameField.getText()));
       try{
         targetGroup.add(user);
         GroupChat g = new GroupChat(targetGroup, nameField.getText());
@@ -549,7 +486,6 @@ class ChatClient {
       nameField.setText("");
       groupName.removeAll();
       groupName.dispose();
-      //updateFriends();
     }
   }
   
@@ -561,7 +497,6 @@ class ChatClient {
       String friendName = btn.getText();
       System.out.println(friendName);
       
-      //targetUser = new User(friendName); // WIP passwords wont match with identical username
       for(int i = 0; i < menu.size(); i++){
         if(menu.get(i) instanceof User){
           System.out.println(((User)menu.get(i)).getUsername());
@@ -614,7 +549,6 @@ class ChatClient {
       loginField.setText("");
       loginPassword.setText("");
 
-      //try{
         System.out.println("??? "+user.getUsername());
         Thread t = new Thread(new messageReader(mySocket, user));
         System.out.println("WHY1");
@@ -624,9 +558,6 @@ class ChatClient {
         System.out.println("WHY3");
         t2.start();
         System.out.println("WHY4");
-      //}catch(IOException e){
-      //  System.out.println("Error sending user info");
-      //}
       
       login.dispose();
       
@@ -656,7 +587,6 @@ class ChatClient {
       groupToggle.setMaximumSize(new Dimension(150,60));
       friends.add(groupToggle);
       
-      //updateFriends();
       friends.add(scroller);
       friends.add(globalPanel);
       friends.pack();
