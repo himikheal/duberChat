@@ -36,7 +36,8 @@ class ChatClient {
   private boolean running = true; // thread status via boolean
   private User user = new User(null); //
   private User targetUser;
-  private JFrame window, login, friends, groupName;
+  private JFrame window, login, friends; //groupName;
+  private JDialog groupName;
   private Message message;
   private GroupMessage groupMessage;
   private boolean global = true;
@@ -454,7 +455,8 @@ class ChatClient {
     public void actionPerformed(ActionEvent event) {
       toggled = !toggled;
       if(!toggled){
-        groupName = new JFrame("Name your Group");
+        groupName = new JDialog(friends,"Name your Group");
+        groupName.setModal(true);
         nameButton = new JButton("SUBMIT NAME");
         nameButton.addActionListener(new NameButtonListener());
         nameButton.setPreferredSize(new Dimension(150, 30));
@@ -491,41 +493,6 @@ class ChatClient {
         t2.start();
         System.out.println("WHY4");
       }
-      
-//      login.dispose();
-//      
-//      southPanel.add(typeField);
-//      southPanel.add(sendButton);
-//      southPanel.add(backButton);
-//      southPanel.add(clearButton);
-//      
-//      window.add(BorderLayout.CENTER, msgArea);
-//      window.add(BorderLayout.SOUTH, southPanel);
-//      
-//      southPanel = new JPanel();
-//      sendButton = new JButton("SEND");
-//      sendButton.addActionListener(new SendButtonListener());
-//      clearButton = new JButton("QUIT");
-//      clearButton.addActionListener(new QuitButtonListener());
-//      
-//      southPanel.add(globalTypeField);
-//      southPanel.add(sendButton);
-//      southPanel.add(clearButton);
-//      
-//      globalPanel.add(globalMsgArea, BorderLayout.CENTER);
-//      globalPanel.add(southPanel, BorderLayout.SOUTH);
-//      
-//      groupToggle = new JButton("<HTML>TOGGLE GROUP<P>CHAT CREATION");
-//      groupToggle.addActionListener(new ToggleButtonListener());
-//      groupToggle.setMaximumSize(new Dimension(150,60));
-//      friends.add(groupToggle);
-//      
-//      friends.add(scroller);
-//      friends.add(globalPanel);
-//      friends.pack();
-//      friends.setVisible(true);
-//      friendPanel.revalidate();
-//      friendPanel.repaint();
     }
   }
   
@@ -539,7 +506,7 @@ class ChatClient {
     }
   }
   
-   class NameButtonListener implements ActionListener {
+  class NameButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       try{
         targetGroup.add(user);
@@ -557,31 +524,35 @@ class ChatClient {
       targetGroup.clear();
       nameField.setText("");
       groupName.removeAll();
+      groupName.revalidate();
+      groupName.repaint();
+      groupNameHelper.removeAll();
+      groupNameHelper.revalidate();
+      groupNameHelper.repaint();
       groupName.dispose();
     }
   }
   
   class FriendButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      global = false;
-      Object source = event.getSource();
-      JButton btn = (JButton)source;
-      String friendName = btn.getText();
-      System.out.println(friendName);
+      if(toggled){
+        Object source = event.getSource();
+        JButton btn = (JButton)source;
+        String friendName = btn.getText();
+        System.out.println(friendName);
       
-      for(int i = 0; i < menu.size(); i++){
-        if(menu.get(i) instanceof User){
-          System.out.println(((User)menu.get(i)).getUsername());
-          if(((User)menu.get(i)).getUsername().equals(friendName)){
+        for(int i = 0; i < menu.size(); i++){
+          if(menu.get(i) instanceof User){
+            System.out.println(((User)menu.get(i)).getUsername());
+            if(((User)menu.get(i)).getUsername().equals(friendName)){
             targetUser = (User)menu.get(i);
+            }
           }
         }
-      }
-      System.out.println(friendName);
-      
-      if(toggled){
+        System.out.println(friendName);
         targetGroup.add(targetUser);
       }else{
+        global = false;
         friends.setVisible(false);
         window.setVisible(true);
       }
@@ -590,22 +561,24 @@ class ChatClient {
   
   class GroupButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      global = false;
-      group = true;
-      Object source = event.getSource();
-      JButton btn = (JButton)source;
-      String gName = btn.getText();
-      for(int i = 0; i < menu.size(); i++){
-        if(menu.get(i) instanceof GroupChat){
-          if(((GroupChat)menu.get(i)).getName().equals(gName)){
-            targetGroup = ((GroupChat)menu.get(i)).getGroup();
+      if(!toggled) {
+        global = false;
+        group = true;
+        Object source = event.getSource();
+        JButton btn = (JButton)source;
+        String gName = btn.getText();
+        for(int i = 0; i < menu.size(); i++){
+          if(menu.get(i) instanceof GroupChat){
+            if(((GroupChat)menu.get(i)).getName().equals(gName)){
+              targetGroup = ((GroupChat)menu.get(i)).getGroup();
+            }
           }
         }
+        friends.setVisible(false);
+        window.remove(msgArea);
+        window.add(BorderLayout.CENTER, groupMsgArea);
+        window.setVisible(true);
       }
-      friends.setVisible(false);
-      window.remove(msgArea);
-      window.add(BorderLayout.CENTER, groupMsgArea);
-      window.setVisible(true);
     }
   }
   
