@@ -18,6 +18,7 @@ class ChatServer {
   ArrayList<SuperChat> users = new ArrayList<SuperChat>();
   HashMap<User, ObjectOutputStream[]> outputMap = new HashMap<>(); //[0] is client, [1] is update
   Set<User> outputSet = outputMap.keySet();
+  Boolean serverRunning = true;
   //HashMap<User, ObjectInputStream[]> inputMap = new HashMap<>();
   //Set<User> inputSet = inputMap.keySet();
   /**
@@ -42,7 +43,9 @@ class ChatServer {
       serverSock = new ServerSocket(5000); // assigns an port to the server
       //updateSocket = new ServerSocket(5001);
       //serverSock.setSoTimeout(15000); //15 second timeout
-      while (running) { // this loops to accept multiple clients
+      Thread console = new Thread(new ConsoleReader());
+      console.start();
+      while (running && serverRunning) { // this loops to accept multiple clients
         client = serverSock.accept(); // wait for connectio
         clientUpdater = serverSock.accept();
         
@@ -160,7 +163,7 @@ class ChatServer {
       // Send a message to the client
 
       // Get a message from the client
-      while (running) { // loop unit a message is received
+      while (running && serverRunning) { // loop unit a message is received
         try {
           Object o = input.readObject();
           //msg = (Message) input.readObject(); // get a message from the client
@@ -257,5 +260,59 @@ class ChatServer {
       }
     } // end of run()
   } // end of inner class
+
+  class ConsoleReader implements Runnable {
+    private Scanner input;
+    private boolean running;
+
+    ConsoleReader() {
+      input = new Scanner(System.in);
+      this.running = true;
+    }
+
+    public void run() {
+      while(this.running) {
+        System.out.println("Type a command, starting with / and ending with !");
+        System.out.println("Command List:");
+        System.out.println("QUIT - Closes Server");
+        System.out.println("SEND - Sends a message to a user");
+        String command = this.input.nextLine();
+        if(command.equals("/QUIT!")) {
+          try {
+            for(User key : outputSet) {
+              outputMap.get(key)[1].writeObject("/SERVERDC!");
+              outputMap.get(key)[1].flush();
+              outputMap.get(key)[0].writeObject("/SERVERDC!");
+              outputMap.get(key)[0].flush();
+            }
+          } catch(IOException e) {
+            System.out.println("Error stopping server");
+          }
+          serverRunning = false;
+          System.exit(-1);
+        }
+        else if(command.equals("/SEND!")) {
+          System.out.println("Type the message to be sent");
+          String message = input.nextLine();
+          System.out.println("Type the target user's username");
+          String target = input.nextLine();
+          try {
+            boolean sent = false;
+            for(User key : outputSet) {
+              if(key.getUsername().equals(target)) {
+                outputMap.get(key)[0].writeObject(new Message(new User(null), ("FROM SERVER - " + message), true));
+                sent = true;
+              }
+            }
+            if(!sent) {
+              System.out.println("No user was found with that name");
+            }
+          } catch(IOException e) {
+            System.out.println("Error sending message");
+          }
+        }
+      }
+    }
+  }
 
 } // end of Class

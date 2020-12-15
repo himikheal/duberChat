@@ -50,7 +50,8 @@ class ChatClient {
   ArrayList<User> users = new ArrayList<User>();
   ArrayList<User> targetGroup = new ArrayList<User>();
   ArrayList<SuperChat> menu = new ArrayList<SuperChat>();
-  
+  private boolean runTest = true;
+
   public static void main(String[] args) {
     new ChatClient().go();
   }
@@ -290,6 +291,10 @@ class ChatClient {
               System.out.println("TESTteedd");
               this.running = false;
             }
+            else if(((String)o).equals("/SERVERDC!")) {
+              System.out.println("DC TEST");
+              this.running = false;
+            }
           }
         } catch (IOException e) {
           System.out.println("Failed to receive msg from the server");
@@ -309,6 +314,9 @@ class ChatClient {
         System.out.println("Error closing stuff");
         e.printStackTrace();
       }
+      while(runTest) {
+      }
+      System.exit(-1);
     }
   }
 
@@ -355,6 +363,10 @@ class ChatClient {
               System.out.println("TESTteedd22");
               this.running = false;
             }
+            else if(((String)o).equals("/SERVERDC!")) {
+              System.out.println("DC TEST");
+              this.running = false;
+            }
           }
           System.out.println(users);
           System.out.println("HI2");
@@ -377,6 +389,7 @@ class ChatClient {
         System.out.println("Error closing stuff");
         e.printStackTrace();
       }
+      runTest = false;
     }
   }
   
