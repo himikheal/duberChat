@@ -1,16 +1,36 @@
 /* [ChatClient.java]
- * A not-so-pretty implementation of a basic chat client
- * @author Mangat
- * @ version 1.0a
+ * A still not-so-pretty implementation of the client side program for duberChat
+ * @author Mr.Mangat, Jeremiah Silver
+ * @ version 2.0a
  */
+import static javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER;
 
-import java.awt.*;
-import javax.swing.*;
-import java.io.*;
-import java.net.*;
-import java.awt.event.*;
-import java.util.*;
-import static javax.swing.ScrollPaneConstants.*;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.util.ArrayList;
+
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 
 class ChatClient {
   
@@ -33,29 +53,38 @@ class ChatClient {
   private Socket updateSocket;
   private ObjectInputStream input;
   private ObjectOutputStream output;
-  private boolean running = true; // thread status via boolean
+  //private boolean running = true; // thread status via boolean
   private User user = new User(null); //
   private User targetUser;
-  private JFrame window, login, friends; //groupName;
+  private JFrame window, login, friends;
   private JDialog groupName;
   private Message message;
   private GroupMessage groupMessage;
   private boolean global = true;
   private boolean toggled = false;
   private boolean group = false;
-  private boolean connected = false;
+  //private boolean connected = false;
   private boolean threadCall = true;
+  private boolean logging;
   private JScrollPane scroller;
-  private int size;
+  private String server;
   ArrayList<User> users = new ArrayList<User>();
   ArrayList<User> targetGroup = new ArrayList<User>();
   ArrayList<SuperChat> menu = new ArrayList<SuperChat>();
   private boolean runTest = true;
-
+  
+  /**
+   * main
+   * the main method, run upon running the java file of ChatClient
+   */
   public static void main(String[] args) {
     new ChatClient().go();
   }
   
+  /**
+   * go
+   * method to work as where everything happens, rather than in the main method
+   */
   public void go() {
     window = new JFrame("Chat Client");
     login = new JFrame("Login Window");
@@ -162,7 +191,13 @@ class ChatClient {
     
   }
   
-  // Attempts to connect to the server and creates the socket and streams
+  /**
+   * connect
+   * Takes in an ip and port, constructs an address and initializes the sockets to hold this address
+   * @param ip, the string ip address
+   * @param port, the integer port
+   * @return mySocket, returns the message handling socket
+   */
   public Socket connect(String ip, int port) {
     System.out.println("Attempting to make a connection..");
     
@@ -170,22 +205,25 @@ class ChatClient {
       this.mySocket = new Socket(ip, port); // attempt socket connection (local address). This will wait until a connection is made
       this.updateSocket = new Socket(ip, port);
 
-      connected = true;
+      //connected = true;
  
       label.setText("Connection Made");
       System.out.println("Connection Made");
       
-    } catch (IOException e) { // connection error occured
-      connected = false;
+    } catch (IOException e) { // connection error occurred
+      //connected = false;
       label.setText("Server not Found, Check Address");
       System.out.println("Connection to Server Failed");
-      e.printStackTrace();
     }
 
 
     return mySocket;
   }
   
+  /**
+   * updateFriends
+   * method called to update the global chat / online user panel graphically when changes are made to the contents
+   */
   public void updateFriends(){
     friendPanel.removeAll();
     friends.validate();
@@ -203,7 +241,6 @@ class ChatClient {
     for(int i = 0; i < menu.size(); i++){
       
       if(menu.get(i) instanceof GroupChat){
-        System.out.println("!!!!!");
         groupButton = new JButton(((GroupChat)menu.get(i)).getName());
         groupButton.addActionListener(new GroupButtonListener());
         groupButton.setPreferredSize(new Dimension(250,50));
@@ -212,8 +249,6 @@ class ChatClient {
         
         friendPanel.add(groupButton);
       }else if(menu.get(i) instanceof User){
-        System.out.println("@@@@@@");
-        System.out.println("MENUSIZE " + menu.size());
         users.remove(user);
         friendButton = new JButton(((User)menu.get(i)).getUsername());
         friendButton.addActionListener(new FriendButtonListener());
@@ -231,15 +266,65 @@ class ChatClient {
       friendPanel.repaint();
     }
   }
-  // ****** Inner Classes for Action Listeners ****
   
-  // send - send msg to server (also flush), then clear the JTextField
+  /**
+   * log
+   * when called closes login window and opens the globalchat window
+   */
+  public void log(){
+    login.dispose();
+    
+    southPanel.add(typeField);
+    southPanel.add(sendButton);
+    southPanel.add(backButton);
+    southPanel.add(clearButton);
+    
+    window.add(BorderLayout.CENTER, msgArea);
+    window.add(BorderLayout.SOUTH, southPanel);
+    
+    southPanel = new JPanel();
+    sendButton = new JButton("SEND");
+    sendButton.addActionListener(new SendButtonListener());
+    clearButton = new JButton("QUIT");
+    clearButton.addActionListener(new QuitButtonListener());
+    
+    southPanel.add(globalTypeField);
+    southPanel.add(sendButton);
+    southPanel.add(clearButton);
+    
+    globalPanel.add(globalMsgArea, BorderLayout.CENTER);
+    globalPanel.add(southPanel, BorderLayout.SOUTH);
+    
+    groupToggle = new JButton("<HTML>TOGGLE GROUP<P>CHAT CREATION");
+    groupToggle.addActionListener(new ToggleButtonListener());
+    groupToggle.setMaximumSize(new Dimension(150,60));
+    friends.add(groupToggle);
+    
+    friends.add(scroller);
+    friends.add(globalPanel);
+    friends.pack();
+    friends.setVisible(true);
+    friendPanel.revalidate();
+    friendPanel.repaint();
+  }
+  // ****** Inner Classes for Action Listeners ****
 
+  /**
+   * messageReader
+   * class that when created as a new thread handles message reading from server
+   * @implements Runnable to work as a thread
+   */
   class messageReader implements Runnable {
     private Socket socket;
     private boolean running;
     private User user;
 
+    /**
+     * messageReader
+     * constructor
+     * @param s the socket needed
+     * @param user the user to operate around
+     */
     messageReader(Socket s, User user) {
       this.user = user;
       this.socket = s;
@@ -248,61 +333,58 @@ class ChatClient {
         output = new ObjectOutputStream(outputStream);
         
       } catch(IOException e) {
-       e.printStackTrace();
+        System.out.println("IO error occurred");
       }
       this.running = true;
     }
 
+    /**
+     * run
+     * runnable method needed to be overidden from the interface
+     */
     public void run() {
       try {
         output.writeObject(this.user);
         InputStream inputStream = socket.getInputStream();
-        System.out.println("AAAAA4");
         input = new ObjectInputStream(inputStream);
-        System.out.println("AAAAA5");
       }catch(IOException e) {
-        System.out.println("NO SEND USER");
-        e.printStackTrace();
+        System.out.println("IO Error Occurred");
       }
       
 
       while(running) {
         try {
-          System.out.println("AHAHTEST");
           Object o = input.readObject();
-          System.out.println("asdasdasdasasdasd" + o == null);
           if(o instanceof Message){
             Message msg = (Message) o; // read the message
             if(msg.isGlobal()){
-              System.out.println("GlReceived: " + msg.getText());
+              System.out.println("GlReceived");
               globalMsgArea.append(msg.getText() + "\n");
             }else{
-              System.out.println("DmReceived: " + msg.getText());
+              System.out.println("DmReceived");
               msgArea.append(msg.getText() + "\n");
             }
           }else if(o instanceof GroupMessage){
             GroupMessage gMsg = (GroupMessage) o;
-            System.out.println("GrReceived: " + gMsg.getText());
+            System.out.println("GrReceived");
             groupMsgArea.append(gMsg.getText() + "\n"); 
           }
           else if(o instanceof String){
-            System.out.println("TESTSTSTSTST");
             if(((String)o).equals("/DISCONNECT!")){
-              System.out.println("TESTteedd");
               this.running = false;
-            }
-            else if(((String)o).equals("/SERVERDC!")) {
-              System.out.println("DC TEST");
+            }else if(((String)o).equals("/SERVERDC!")) {
               this.running = false;
+            }else if(((String)o).equals("/BADUSER!")) {
+              output.close();
+              input.close();
+              return;
             }
           }
         } catch (IOException e) {
           System.out.println("Failed to receive msg from the server");
-          e.printStackTrace();
           running = false;
         } catch (ClassNotFoundException e) {
           System.out.println("Class not found");
-          e.printStackTrace();
           running = false;
         }
       }
@@ -311,8 +393,7 @@ class ChatClient {
         input.close();
         mySocket.close();
       } catch(IOException e) {
-        System.out.println("Error closing stuff");
-        e.printStackTrace();
+        System.out.println("Error closing items");
       }
       while(runTest) {
       }
@@ -320,12 +401,21 @@ class ChatClient {
     }
   }
 
+  /**
+   * clientUpdater
+   * thread for handling client updates, graphical and functional
+   */
   class clientUpdater implements Runnable {
     private Socket socket;
     private boolean running;
     private ObjectInputStream updateInput;
     private ObjectOutputStream updateOutput;
 
+    /**
+     * clientUpdater
+     * constructor for clientUpdater, creates clientupdater thread
+     * @param s socket needed
+     */
     clientUpdater(Socket s) {
       this.socket = s;
       try {
@@ -335,20 +425,60 @@ class ChatClient {
         this.updateInput = new ObjectInputStream(inputStream);
         
       } catch(IOException e) {
-        System.out.println("TESTING3");
-        e.printStackTrace();
+        System.out.println("IO error occurred");
       }
       this.running = true;
     }
 
+    /**
+     * run
+     * method needing overiding from Runnable
+     */
     public void run() {
       while(running) {
         try {
-          System.out.println("HI1");
           Object o = this.updateInput.readObject();
-          System.out.println("TYPEEEEE " + o.getClass());
-          if(o instanceof ArrayList){
-            System.out.println("SFSDFSDFSDF");
+          if(o instanceof User){
+            user = (User)o;
+            if(!logging){
+              if(!user.getSignIn()){
+                output.writeObject("/BADUSER!");
+                threadCall = true;
+                updateInput.close();
+                updateOutput.close();
+                updateInput = null;
+                updateOutput = null;
+                String address = server.substring(0, server.indexOf(":"));
+                String portString = server.substring(server.indexOf(":")+1, server.length());
+                int port = Integer.parseInt(portString);
+                connect(address,port);
+                label = new JLabel("That username has been taken!");
+                signUpPanel.add(label);
+                login.repaint();
+                return;
+              }
+              log();
+            }else{
+              if(!user.getLogIn()){
+                output.writeObject("/BADUSER!");
+                threadCall = true;
+                updateInput.close();
+                updateOutput.close();
+                updateInput = null;
+                updateOutput = null;
+                String address = server.substring(0, server.indexOf(":"));
+                String portString = server.substring(server.indexOf(":")+1, server.length());
+                int port = Integer.parseInt(portString);
+                connect(address,port);
+                label = new JLabel("Incorrect Login information, or acc doesn't exist!");
+                loginPanel.add(label);
+                login.repaint();
+                return;
+              }else{
+                log();
+              }
+            }
+          }else if(o instanceof ArrayList){
             users = ((ArrayList<User>)o);
             for(int i = 0; i < users.size(); i++) {
               if(users.get(i).getUsername().equals(user.getUsername())) {
@@ -358,36 +488,26 @@ class ChatClient {
           }else if(o instanceof GroupChat){
             menu.add((GroupChat)o);
           }else if(o instanceof String){
-            System.out.println("TESTSTSTSTST22");
             if(((String)o).equals("/DISCONNECT!")){
-              System.out.println("TESTteedd22");
               this.running = false;
             }
             else if(((String)o).equals("/SERVERDC!")) {
-              System.out.println("DC TEST");
               this.running = false;
             }
           }
-          System.out.println(users);
-          System.out.println("HI2");
           updateFriends();
-          System.out.println("HI3");
         }catch(IOException e) {
-          System.out.println("TESTING1");
-          e.printStackTrace();
+          System.out.println("IO error occurred");
         }catch(ClassNotFoundException e2) {
-          System.out.println("TESTING2");
-          e2.printStackTrace();
+          System.out.println("Class not found");
         }
       }
       try{
-        //output.writeObject("/DISCONNECTED!");
         updateInput.close();
         updateOutput.close();
         updateSocket.close();
       }catch(IOException e){
-        System.out.println("Error closing stuff");
-        e.printStackTrace();
+        System.out.println("Error closing items");
       }
       runTest = false;
     }
@@ -401,7 +521,7 @@ class ChatClient {
           output.writeObject(message);
           output.flush();
         } catch(IOException e) { // Catches IO error
-          e.printStackTrace();
+          System.out.println("IO error occurred");
         }
         globalTypeField.setText("");
       }else if(group){
@@ -410,7 +530,7 @@ class ChatClient {
           output.writeObject(groupMessage);
           output.flush();
         } catch(IOException e) { // Catches IO error
-          e.printStackTrace();
+          System.out.println("IO error occurred");
         }
         typeField.setText("");
       }else{
@@ -419,27 +539,22 @@ class ChatClient {
           output.writeObject(message);
           output.flush();
         } catch(IOException e) { // Catches IO error
-          e.printStackTrace();
+          System.out.println("IO error occurred");
         }
         typeField.setText("");
       }
     }
   }
   
-  // QuitButtonListener - Quit the program
+  // QuitButtonListener - Quits the program
   class QuitButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       try{
         output.writeObject("/DISCONNECT!");
-        //output.close();
-        //input.close();
-        //mySocket.close();
-        //updateSocket.close();
       }catch(IOException e){
-        System.out.println("Error closing stuff");
-        e.printStackTrace();
+        System.out.println("Error closing items");
       }
-      running = false;
+      //running = false;
       window.dispose();
       friends.dispose();
       System.exit(-1);
@@ -449,7 +564,6 @@ class ChatClient {
   class BackButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       window.setVisible(false);
-      BorderLayout b = (BorderLayout)window.getLayout();
       if(!group){
         window.remove(msgArea);
         msgArea = new JTextArea();
@@ -495,23 +609,20 @@ class ChatClient {
       signUpPassword.setText("");
       
       if(threadCall){
+        logging = false;
         threadCall = !threadCall;
-        System.out.println("??? "+user.getUsername());
         Thread t = new Thread(new messageReader(mySocket, user));
-        System.out.println("WHY1");
         t.start(); // start the new thread
-        System.out.println("WHY2");
         Thread t2 = new Thread(new clientUpdater(updateSocket));
-        System.out.println("WHY3");
         t2.start();
-        System.out.println("WHY4");
       }
+      
     }
   }
   
   class ServerButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      String server = portField.getText();
+      server = portField.getText();
       String address = server.substring(0, server.indexOf(":"));
       String portString = server.substring(server.indexOf(":")+1, server.length());
       int port = Integer.parseInt(portString);
@@ -524,15 +635,9 @@ class ChatClient {
       try{
         targetGroup.add(user);
         GroupChat g = new GroupChat(targetGroup, nameField.getText());
-        System.out.println(g.getGroup() == null);
-        System.out.println(g.getGroup().size());
-        for(int i = 0; i < g.getGroup().size(); i++){
-          System.out.println("text" + g.getGroup().get(i));
-        }
         output.writeObject(g);
       }catch(IOException e){
         System.out.println("Failed to send groupchat");
-        e.printStackTrace();
       }
       targetGroup.clear();
       nameField.setText("");
@@ -548,24 +653,22 @@ class ChatClient {
   
   class FriendButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
-      if(toggled){
-        Object source = event.getSource();
-        JButton btn = (JButton)source;
-        String friendName = btn.getText();
-        System.out.println(friendName);
+      global = false;
+      Object source = event.getSource();
+      JButton btn = (JButton)source;
+      String friendName = btn.getText();
       
-        for(int i = 0; i < menu.size(); i++){
-          if(menu.get(i) instanceof User){
-            System.out.println(((User)menu.get(i)).getUsername());
-            if(((User)menu.get(i)).getUsername().equals(friendName)){
+      for(int i = 0; i < menu.size(); i++){
+        if(menu.get(i) instanceof User){
+          if(((User)menu.get(i)).getUsername().equals(friendName)){
             targetUser = (User)menu.get(i);
-            }
           }
         }
-        System.out.println(friendName);
+      }
+      
+      if(toggled){
         targetGroup.add(targetUser);
       }else{
-        global = false;
         friends.setVisible(false);
         window.setVisible(true);
       }
@@ -598,7 +701,8 @@ class ChatClient {
   class LoginButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent event) {
       user = new User(loginField.getText());
-      System.out.println(user);
+      user.setLogIn(true);
+      logging = true;
       String password = "";
       for(int i = 0; i < loginPassword.getPassword().length; i++){
         password += loginPassword.getPassword()[i];
@@ -609,52 +713,11 @@ class ChatClient {
 
       if(threadCall){
         threadCall = !threadCall;
-        System.out.println("??? "+user.getUsername());
         Thread t = new Thread(new messageReader(mySocket, user));
-        System.out.println("WHY1");
         t.start(); // start the new thread
-        System.out.println("WHY2");
         Thread t2 = new Thread(new clientUpdater(updateSocket));
-        System.out.println("WHY3");
         t2.start();
-        System.out.println("WHY4");
       }
-      
-      login.dispose();
-      
-      southPanel.add(typeField);
-      southPanel.add(sendButton);
-      southPanel.add(backButton);
-      southPanel.add(clearButton);
-      
-      window.add(BorderLayout.CENTER, msgArea);
-      window.add(BorderLayout.SOUTH, southPanel);
-      
-      southPanel = new JPanel();
-      sendButton = new JButton("SEND");
-      sendButton.addActionListener(new SendButtonListener());
-      clearButton = new JButton("QUIT");
-      clearButton.addActionListener(new QuitButtonListener());
-      
-      southPanel.add(globalTypeField);
-      southPanel.add(sendButton);
-      southPanel.add(clearButton);
-      
-      globalPanel.add(globalMsgArea, BorderLayout.CENTER);
-      globalPanel.add(southPanel, BorderLayout.SOUTH);
-      
-      groupToggle = new JButton("<HTML>TOGGLE GROUP<P>CHAT CREATION");
-      groupToggle.addActionListener(new ToggleButtonListener());
-      groupToggle.setMaximumSize(new Dimension(150,60));
-      friends.add(groupToggle);
-      
-      friends.add(scroller);
-      friends.add(globalPanel);
-      friends.pack();
-      friends.setVisible(true);
-      friendPanel.revalidate();
-      friendPanel.repaint();
-      
       
     }
   }
